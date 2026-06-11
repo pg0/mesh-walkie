@@ -1,5 +1,6 @@
 ## 2026-06-11
 
+- location — add LocationSource (FusedLocationProviderClient, balanced power, 5 s interval) and HeadingSource (TYPE_ROTATION_VECTOR, azimuth normalized [0,360), piped through HeadingFilter alpha=0.15)
 - core — add TransportRouter: per-peer mesh-vs-server decision, 20s timeout, nowMs injected, 4 tests passing
 
 - core — add PeerRegistry: per-peer state upsert, distance/bearing via GeoMath, Freshness thresholds (30s/120s), snapshot sorted by distance, nowMs injected (no internal clock); 7 tests passing
