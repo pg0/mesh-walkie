@@ -41,6 +41,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     val vadSens by Settings.vadSensitivity.collectAsStateWithLifecycle()
     val btHeadsetOn by Settings.btHeadset.collectAsStateWithLifecycle()
     val netHost by Settings.internetHost.collectAsStateWithLifecycle()
+    val netClient by Settings.internetClient.collectAsStateWithLifecycle()
     val gpsOn by Settings.gpsEnabled.collectAsStateWithLifecycle()
     val myHostIp by MeshBus.myHostIp.collectAsStateWithLifecycle()
     val savedName by Settings.displayName.collectAsStateWithLifecycle()
@@ -186,6 +187,14 @@ fun SettingsScreen(onBack: () -> Unit) {
         }
         myHostIp?.let {
             Text("Hosting at [$it]:51820", style = MaterialTheme.typography.bodySmall)
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Client (auto-join a host)", style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = netClient, onCheckedChange = { Settings.setInternetClient(it) })
         }
 
         Spacer(Modifier.height(28.dp))

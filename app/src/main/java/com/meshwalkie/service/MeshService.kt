@@ -169,6 +169,15 @@ class MeshService : Service() {
 
         // Internet fallback: host the relay (toggle); joining is explicit per-host.
         scope.launch { Settings.internetHost.collect { on -> if (on) startHost() else stopHost() } }
+        scope.launch {
+            Settings.internetClient.collect { on ->
+                if (on && serverLink == null) {
+                    MeshBus.hosts.value.lastOrNull()?.let { joinHost(it.ip, it.port) }
+                } else if (!on) {
+                    disconnectClient()
+                }
+            }
+        }
         MeshBus.joinHandler = { ip, port -> joinHost(ip, port) }
         MeshBus.leaveHostHandler = { disconnectClient() }
 
@@ -200,7 +209,10 @@ class MeshService : Service() {
                         name = Settings.displayName.value, batteryPct = batteryPct()
                     )
                 )
-                hostServer?.let { NetUtil.globalIpv6()?.let { ip -> announceHost(ip) } }
+                hostServer?.let {
+                    NetUtil.globalIpv6()?.let { ip -> announceHost(ip) }
+                    MeshBus.publishHostClientCount(it.clientCount)
+                }
                 publishPeers()
                 delay(10_000L)
             }
@@ -366,6 +378,10 @@ class MeshService : Service() {
     private fun onHostAnnounced(p: Packet.Host) {
         if (p.originId == originId) return
         MeshBus.addHost(HostInfo(p.originId, p.name, p.ip, p.port))
+        // Client mode: auto-join the first host that shows up.
+        if (Settings.internetClient.value && serverLink == null && !Settings.internetHost.value) {
+            joinHost(p.ip, p.port)
+        }
     }
 
     private fun startHost() {
@@ -405,6 +421,7 @@ class MeshService : Service() {
         disconnectClient()
         val link = ServerLink(ip, port)
         link.onState = { c ->
+            MeshBus.publishJoinedServer(c)
             MeshBus.publishStatus(if (c) "Joined internet host $ip" else statusText(currentLinks))
         }
         link.connect()
@@ -415,6 +432,7 @@ class MeshService : Service() {
     private fun disconnectClient() {
         serverLink?.let { composite.remove(it); it.close() }
         serverLink = null
+        MeshBus.publishJoinedServer(false)
         MeshBus.publishStatus(statusText(currentLinks))
     }
 

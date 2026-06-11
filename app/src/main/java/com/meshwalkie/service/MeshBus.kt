@@ -49,6 +49,16 @@ object MeshBus {
     val myHostIp: StateFlow<String?> = _myHostIp
     fun publishMyHostIp(ip: String?) { _myHostIp.value = ip }
 
+    /** True while connected to a host as a client (so only then can you Leave). */
+    private val _joinedServer = MutableStateFlow(false)
+    val joinedServer: StateFlow<Boolean> = _joinedServer
+    fun publishJoinedServer(on: Boolean) { _joinedServer.value = on }
+
+    /** Number of clients connected to me while I host. */
+    private val _hostClientCount = MutableStateFlow(0)
+    val hostClientCount: StateFlow<Int> = _hostClientCount
+    fun publishHostClientCount(n: Int) { _hostClientCount.value = n }
+
     /** Set by the service; UI calls it to join a host at ip:port. */
     @Volatile var joinHandler: ((ip: String, port: Int) -> Unit)? = null
     /** Set by the service; UI calls it to leave the joined host. */

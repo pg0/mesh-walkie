@@ -60,6 +60,11 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     val waypoints by MeshBus.waypoints.collectAsStateWithLifecycle()
     val target by MeshBus.target.collectAsStateWithLifecycle()
     val vadOn by Settings.vadEnabled.collectAsStateWithLifecycle()
+    val hosts by MeshBus.hosts.collectAsStateWithLifecycle()
+    val myHostIp by MeshBus.myHostIp.collectAsStateWithLifecycle()
+    val joinedServer by MeshBus.joinedServer.collectAsStateWithLifecycle()
+    val hostClients by MeshBus.hostClientCount.collectAsStateWithLifecycle()
+    val hostIds = hosts.map { it.id }.toSet()
     var viewMode by remember { mutableIntStateOf(0) }   // 0 list, 1 radar, 2 map
     var showType by remember { mutableStateOf(false) }
     var showWp by remember { mutableStateOf(false) }
@@ -93,6 +98,10 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             }
         }
         Text(status, style = MaterialTheme.typography.bodyMedium)
+        when {
+            myHostIp != null -> Text("🌐 Hosting - $hostClients client(s)", style = MaterialTheme.typography.bodySmall)
+            joinedServer -> Text("🌐 On internet server", style = MaterialTheme.typography.bodySmall)
+        }
         if (waitingForGps) {
             Text(
                 "Waiting for GPS fix - arrow and distance appear once both phones have a fix outdoors.",
@@ -132,7 +141,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             }
             // Users next (full arrow rows when positions are known).
             items(peers, key = { "p_${it.id}" }) { peer ->
-                PeerRow(peer = peer, myHeadingDeg = heading)
+                PeerRow(peer = peer, myHeadingDeg = heading, isHost = peer.id in hostIds)
             }
             // Then shared waypoints (rally points).
             items(waypoints, key = { "w_${it.id}" }) { wp ->
@@ -151,7 +160,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                     )
                 }
                 items(rosterOnly, key = { "r_${it.id}" }) { entry ->
-                    RosterRow(entry)
+                    RosterRow(entry, isHost = entry.id in hostIds)
                 }
             }
             if (peers.isEmpty() && roster.isEmpty()) {
@@ -256,7 +265,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
 }
 
 @Composable
-fun PeerRow(peer: PeerView, myHeadingDeg: Float) {
+fun PeerRow(peer: PeerView, myHeadingDeg: Float, isHost: Boolean = false) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
@@ -276,7 +285,8 @@ fun PeerRow(peer: PeerView, myHeadingDeg: Float) {
             )
             val nameLine = if (peer.freshness == Freshness.STALE) "${peer.name} - offline, seen ${Display.formatAge(peer.ageMs)} ago" else peer.name
             val batt = if (peer.batteryPct in 0..100) "  🔋${peer.batteryPct}%" else ""
-            Text(nameLine + batt, style = MaterialTheme.typography.bodyMedium)
+            val host = if (isHost) "  🌐" else ""
+            Text(nameLine + batt + host, style = MaterialTheme.typography.bodyMedium)
         }
         FreshnessDot(peer.freshness)
     }
@@ -339,13 +349,13 @@ fun WaypointRow(wp: WaypointView, myHeadingDeg: Float, onDelete: () -> Unit) {
 }
 
 @Composable
-fun RosterRow(entry: PeerRosterEntry) {
+fun RosterRow(entry: PeerRosterEntry, isHost: Boolean = false) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(entry.name, style = MaterialTheme.typography.titleMedium)
+            Text(entry.name + if (isHost) "  🌐" else "", style = MaterialTheme.typography.titleMedium)
             val proximity = if (entry.hops == 0) "direct (near)" else "${entry.hops} hops (~${entry.hops * 75} m)"
             val offline = if (entry.freshness == Freshness.STALE) "offline ${Display.formatAge(entry.ageMs)} ago - " else ""
             val batt = if (entry.batteryPct in 0..100) " - 🔋${entry.batteryPct}%" else ""

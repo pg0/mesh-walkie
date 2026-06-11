@@ -1,5 +1,6 @@
 package com.meshwalkie.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshwalkie.service.MeshBus
@@ -28,6 +31,8 @@ import com.meshwalkie.service.MeshBus
 @Composable
 fun ServerDialog(onDismiss: () -> Unit) {
     val hosts by MeshBus.hosts.collectAsStateWithLifecycle()
+    val joined by MeshBus.joinedServer.collectAsStateWithLifecycle()
+    val clipboard = LocalClipboardManager.current
     var ip by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("51820") }
 
@@ -45,7 +50,12 @@ fun ServerDialog(onDismiss: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("${h.name}  [${h.ip}]", modifier = Modifier.weight(1f))
+                            Text(
+                                "${h.name}  [${h.ip}]",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { clipboard.setText(AnnotatedString(h.ip)) }
+                            )
                             TextButton(onClick = {
                                 MeshBus.joinHandler?.invoke(h.ip, h.port); onDismiss()
                             }) { Text("Join") }
@@ -74,7 +84,9 @@ fun ServerDialog(onDismiss: () -> Unit) {
         },
         dismissButton = {
             Row {
-                TextButton(onClick = { MeshBus.leaveHostHandler?.invoke(); onDismiss() }) { Text("Leave") }
+                if (joined) {
+                    TextButton(onClick = { MeshBus.leaveHostHandler?.invoke(); onDismiss() }) { Text("Leave") }
+                }
                 TextButton(onClick = onDismiss) { Text("Close") }
             }
         }
