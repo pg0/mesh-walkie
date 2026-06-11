@@ -9,19 +9,25 @@ import java.util.concurrent.CopyOnWriteArrayList
  * packet heard on both mesh and server is processed once, and a node on both is
  * a bridge for free.
  */
-class CompositeTransport : Transport {
+class CompositeTransport(private val crypto: ChannelCrypto) : Transport {
     private val children = CopyOnWriteArrayList<Transport>()
     @Volatile private var handler: ((ByteArray) -> Unit)? = null
 
     fun add(t: Transport) {
-        t.onReceive { bytes -> handler?.invoke(bytes) }
+        // Children carry ciphertext; decrypt before the engine sees it. Bytes
+        // that fail to decrypt (wrong channel / corrupt) are dropped.
+        t.onReceive { cipher ->
+            val plain = try { crypto.decrypt(cipher) } catch (_: Exception) { null }
+            if (plain != null) handler?.invoke(plain)
+        }
         children.add(t)
     }
 
     fun remove(t: Transport) { children.remove(t) }
 
     override fun broadcast(bytes: ByteArray) {
-        children.forEach { it.broadcast(bytes) }
+        val cipher = crypto.encrypt(bytes)
+        children.forEach { it.broadcast(cipher) }
     }
 
     override fun onReceive(handler: (ByteArray) -> Unit) {

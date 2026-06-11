@@ -17,6 +17,7 @@ import com.meshwalkie.audio.PttRecorder
 import com.meshwalkie.audio.VadRecorder
 import com.meshwalkie.audio.VoicePlayer
 import com.meshwalkie.audio.VoiceSender
+import com.meshwalkie.core.ChannelCrypto
 import com.meshwalkie.core.CompositeTransport
 import com.meshwalkie.core.MeshEngine
 import com.meshwalkie.core.Packet
@@ -223,7 +224,7 @@ class MeshService : Service() {
     private fun bindTransport(group: String) {
         currentGroup = group
         transport = NearbyTransport(this, roomCode = group, deviceName = Settings.displayName.value)
-        composite = CompositeTransport()
+        composite = CompositeTransport(ChannelCrypto(group))   // channel-keyed AES-GCM
         composite.add(transport)            // BLE mesh; internet server links added on demand
         engine = MeshEngine(composite)
         voiceSender = VoiceSender(engine, originId, nextSeq = { seq.incrementAndGet() })
