@@ -125,25 +125,35 @@ class MeshService : Service() {
             }
         }
 
-        locationSource.start { fix ->
-            myLat = fix.latitude
-            myLon = fix.longitude
-            hasFix = true
-            MeshBus.publishWaitingForGps(false)
-            MeshBus.publishMyLocation(fix.latitude, fix.longitude)
-            MeshBus.publishMySpeed(if (fix.hasSpeed()) fix.speed.toDouble() else 0.0)
-            // Privacy: only broadcast my position when GPS sharing is enabled.
-            if (Settings.gpsEnabled.value) {
-                engine.send(
-                    Packet.Position(
-                        originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
-                        System.currentTimeMillis(), fix.latitude, fix.longitude, myHeading,
-                        speedMps = if (fix.hasSpeed()) fix.speed else 0f,
-                        courseDeg = if (fix.hasBearing()) fix.bearing else -1f
-                    )
-                )
+        // GPS receiver follows the "share my position" toggle: OFF stops the GPS
+        // chip entirely (no power draw, no position), not just the broadcast.
+        scope.launch {
+            Settings.gpsEnabled.collect { on ->
+                if (on) {
+                    MeshBus.publishWaitingForGps(!hasFix)
+                    locationSource.start { fix ->
+                        myLat = fix.latitude
+                        myLon = fix.longitude
+                        hasFix = true
+                        MeshBus.publishWaitingForGps(false)
+                        MeshBus.publishMyLocation(fix.latitude, fix.longitude)
+                        MeshBus.publishMySpeed(if (fix.hasSpeed()) fix.speed.toDouble() else 0.0)
+                        engine.send(
+                            Packet.Position(
+                                originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
+                                System.currentTimeMillis(), fix.latitude, fix.longitude, myHeading,
+                                speedMps = if (fix.hasSpeed()) fix.speed else 0f,
+                                courseDeg = if (fix.hasBearing()) fix.bearing else -1f
+                            )
+                        )
+                        publishPeers()
+                    }
+                } else {
+                    locationSource.stop()        // GPS chip off = no power draw
+                    hasFix = false
+                    MeshBus.publishWaitingForGps(false)   // not waiting; GPS intentionally off
+                }
             }
-            publishPeers()
         }
 
         headingSource.start { deg ->

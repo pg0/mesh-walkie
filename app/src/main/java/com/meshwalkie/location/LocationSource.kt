@@ -19,6 +19,7 @@ class LocationSource(context: Context) {
     /** Caller (MeshService) holds ACCESS_FINE_LOCATION before calling. */
     @SuppressLint("MissingPermission")
     fun start(intervalMs: Long = 4_000L, onFix: (Location) -> Unit) {
+        if (callback != null) stop()   // re-start safe: drop the old updates first
         // Seed immediately with the last known fix so a phone that located
         // recently (via any app) shows position at once instead of waiting for
         // a fresh fix. Helps the device with weaker/slower GPS.
