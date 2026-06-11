@@ -66,10 +66,16 @@ fun MapScreen(
                 }
                 override fun longPressHelper(p: GeoPoint): Boolean = false
             }))
+            fun Marker.styleLabel(bg: Int) {
+                setTextLabelFontSize(40)
+                setTextLabelForegroundColor(android.graphics.Color.WHITE)
+                setTextLabelBackgroundColor(bg)
+            }
             myLoc?.let { (lat, lon) ->
                 map.overlays.add(Marker(map).apply {
                     position = GeoPoint(lat, lon); title = "You"
-                    setTextIcon("◉ you")
+                    styleLabel(android.graphics.Color.argb(220, 21, 101, 192))   // blue
+                    setTextIcon("YOU")
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                 })
             }
@@ -77,20 +83,24 @@ fun MapScreen(
                 map.overlays.add(Marker(map).apply {
                     position = GeoPoint(p.lat, p.lon)
                     title = "${p.name}  ${Display.formatDistance(p.distanceMeters)}"
-                    // peers keep the default pin
+                    styleLabel(android.graphics.Color.argb(220, 46, 125, 50))    // green
+                    setTextIcon(p.name)
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                 })
             }
             waypoints.forEach { w ->
                 map.overlays.add(Marker(map).apply {
                     position = GeoPoint(w.lat, w.lon); title = "Waypoint: ${w.label}"
-                    setTextIcon("📍 ${w.label}")   // distinct from peer pins
+                    styleLabel(android.graphics.Color.argb(220, 255, 160, 0))    // amber
+                    setTextIcon("📍 ${w.label}")
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                 })
             }
             target?.let { (lat, lon) ->
                 map.overlays.add(Marker(map).apply {
                     position = GeoPoint(lat, lon); title = "Target"
-                    setTextIcon("🎯 target")
+                    styleLabel(android.graphics.Color.argb(220, 198, 40, 40))    // red
+                    setTextIcon("🎯 TARGET")
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                 })
             }
