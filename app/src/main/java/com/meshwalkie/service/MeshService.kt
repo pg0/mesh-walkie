@@ -379,8 +379,11 @@ class MeshService : Service() {
     private fun onHostAnnounced(p: Packet.Host) {
         if (p.originId == originId) return
         MeshBus.addHost(HostInfo(p.originId, p.name, p.ip, p.port))
+        val client = Settings.internetClient.value
+        val hosting = Settings.internetHost.value
+        Log.i(TAG, "host announced: ${p.name} [${p.ip}]:${p.port} - client=$client hosting=$hosting linked=${serverLink != null}")
         // Client mode: auto-join the first host that shows up.
-        if (Settings.internetClient.value && serverLink == null && !Settings.internetHost.value) {
+        if (client && serverLink == null && !hosting) {
             joinHost(p.ip, p.port)
         }
     }
@@ -419,6 +422,7 @@ class MeshService : Service() {
     }
 
     private fun joinHost(ip: String, port: Int) {
+        Log.i(TAG, "joinHost [$ip]:$port")
         disconnectClient()
         val link = ServerLink(ip, port)
         link.onState = { c ->
