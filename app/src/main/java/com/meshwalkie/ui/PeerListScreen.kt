@@ -23,8 +23,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -70,6 +72,11 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     var showWp by remember { mutableStateOf(false) }
     var showDropTarget by remember { mutableStateOf(false) }
     var showServers by remember { mutableStateOf(false) }
+    // Ticks every few seconds so relative ages ("12s ago") keep updating.
+    var nowTick by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) { kotlinx.coroutines.delay(5000); nowTick = System.currentTimeMillis() }
+    }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
@@ -184,10 +191,9 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                     .heightIn(max = 56.dp)   // ~2 lines, so it never shrinks the map
                     .padding(top = 8.dp)
             ) {
-                val now = System.currentTimeMillis()
                 items(messages.asReversed()) { (text, atMs) ->
                     Text(
-                        "💬 $text  ·  ${Display.formatAge(now - atMs)} ago",
+                        "💬 $text  ·  ${Display.formatAge(nowTick - atMs)} ago",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
