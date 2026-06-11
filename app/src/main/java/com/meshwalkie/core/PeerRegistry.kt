@@ -13,7 +13,9 @@ data class PeerView(
     val batteryPct: Int = -1,
     val lat: Double = 0.0,
     val lon: Double = 0.0,
-    val ageMs: Long = 0L
+    val ageMs: Long = 0L,
+    val speedMps: Float = 0f,
+    val courseDeg: Float = -1f
 )
 
 /**
@@ -43,7 +45,9 @@ class PeerRegistry {
         var positionTimestampMs: Long = 0L,
         var lastSeenMs: Long = 0L,
         var hops: Int = 0,
-        var batteryPct: Int = -1     // -1 = unknown
+        var batteryPct: Int = -1,    // -1 = unknown
+        var speedMps: Float = 0f,
+        var courseDeg: Float = -1f
     )
 
     private val peers = LinkedHashMap<String, PeerState>()
@@ -68,6 +72,8 @@ class PeerRegistry {
                 state.lat = packet.lat
                 state.lon = packet.lon
                 state.positionTimestampMs = packet.timestampMs
+                state.speedMps = packet.speedMps
+                state.courseDeg = packet.courseDeg
             }
             is Packet.Presence -> {
                 state.name = packet.name
@@ -93,7 +99,9 @@ class PeerRegistry {
                 batteryPct = s.batteryPct,
                 lat = lat,
                 lon = lon,
-                ageMs = age
+                ageMs = age,
+                speedMps = s.speedMps,
+                courseDeg = s.courseDeg
             )
         }.sortedBy { it.distanceMeters }
 

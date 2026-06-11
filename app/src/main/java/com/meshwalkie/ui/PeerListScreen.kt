@@ -66,12 +66,16 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     val myHostIp by MeshBus.myHostIp.collectAsStateWithLifecycle()
     val joinedServer by MeshBus.joinedServer.collectAsStateWithLifecycle()
     val hostClients by MeshBus.hostClientCount.collectAsStateWithLifecycle()
+    val countdown by MeshBus.countdown.collectAsStateWithLifecycle()
+    val mySpeed by MeshBus.mySpeed.collectAsStateWithLifecycle()
+    val muted by Settings.muteSounds.collectAsStateWithLifecycle()
     val hostIds = hosts.map { it.id }.toSet()
     var viewMode by remember { mutableIntStateOf(0) }   // 0 list, 1 radar, 2 map
     var showType by remember { mutableStateOf(false) }
     var showWp by remember { mutableStateOf(false) }
     var showDropTarget by remember { mutableStateOf(false) }
     var showServers by remember { mutableStateOf(false) }
+    var showTimer by remember { mutableStateOf(false) }
     // Ticks every few seconds so relative ages ("12s ago") keep updating.
     var nowTick by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
@@ -109,6 +113,15 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             myHostIp != null -> Text("🌐 Hosting - $hostClients client(s)", style = MaterialTheme.typography.bodySmall)
             joinedServer -> Text("🌐 Joined online host", style = MaterialTheme.typography.bodySmall)
         }
+        if (muted) Text("🔇 Muted", style = MaterialTheme.typography.bodySmall)
+        countdown?.let { (label, endAt) ->
+            val rem = ((endAt - nowTick) / 1000).coerceAtLeast(0)
+            Text(
+                "⏱ $label: ${rem / 60}:${(rem % 60).toString().padStart(2, '0')}",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
         if (waitingForGps) {
             Text(
                 "Waiting for GPS fix - arrow and distance appear once both phones have a fix outdoors.",
@@ -140,7 +153,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             if (t != null && ml != null) {
                 item {
                     TargetRow(
-                        t, ml, heading,
+                        t, ml, heading, mySpeed,
                         onDrop = { showDropTarget = true },
                         onClear = { MeshBus.clearTarget() }
                     )
@@ -218,6 +231,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             QuickTextWheel(onSend = { MeshBus.sendTextHandler?.invoke(it) })
             TextButton(onClick = { showType = true }) { Text("Msg") }
             TextButton(onClick = { showWp = true }) { Text("📍Waypoint") }
+            TextButton(onClick = { showTimer = true }) { Text("⏱ Timer") }
         }
         Box(
             modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -257,6 +271,17 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
         if (showServers) {
             ServerDialog(onDismiss = { showServers = false })
         }
+        if (showTimer) {
+            TextInputDialog(
+                title = "Regroup countdown - minutes",
+                confirmLabel = "Start",
+                onConfirm = { m ->
+                    val sec = (m.trim().toIntOrNull() ?: 0) * 60
+                    if (sec > 0) MeshBus.startCountdownHandler?.invoke("Regroup", sec)
+                },
+                onDismiss = { showTimer = false }
+            )
+        }
         if (showDropTarget) {
             val t = target
             TextInputDialog(
@@ -292,6 +317,11 @@ fun PeerRow(peer: PeerView, myHeadingDeg: Float, isHost: Boolean = false) {
             val batt = if (peer.batteryPct in 0..100) "  🔋${peer.batteryPct}%" else ""
             val host = if (isHost) "  🌐" else ""
             Text(nameLine + batt + host, style = MaterialTheme.typography.bodyMedium)
+            if (peer.speedMps > 0.5f) {
+                val kmh = (peer.speedMps * 3.6f).toInt()
+                val dir = if (peer.courseDeg >= 0f) " ${Display.compassLabel(peer.courseDeg.toDouble())}" else ""
+                Text("🚶 $kmh km/h$dir", style = MaterialTheme.typography.bodySmall)
+            }
         }
         FreshnessDot(peer.freshness)
     }
@@ -302,11 +332,13 @@ fun TargetRow(
     target: Pair<Double, Double>,
     myLoc: Pair<Double, Double>,
     myHeadingDeg: Float,
+    mySpeedMps: Double,
     onDrop: () -> Unit,
     onClear: () -> Unit
 ) {
     val dist = GeoMath.distanceMeters(myLoc.first, myLoc.second, target.first, target.second)
     val bearing = GeoMath.bearingDegrees(myLoc.first, myLoc.second, target.first, target.second)
+    val eta = if (mySpeedMps > 0.5) " · ETA ${Display.formatAge((dist / mySpeedMps).toLong() * 1000L)}" else ""
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
@@ -319,7 +351,7 @@ fun TargetRow(
         Spacer(modifier = Modifier.size(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                "🎯 TARGET  ${Display.formatDistance(dist)} ${Display.compassLabel(bearing)}",
+                "🎯 TARGET  ${Display.formatDistance(dist)} ${Display.compassLabel(bearing)}$eta",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary
             )

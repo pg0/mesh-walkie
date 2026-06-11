@@ -39,6 +39,18 @@ class PacketCodecExtTest {
     }
 
     @Test
+    fun timerRoundTrips() {
+        val p = Packet.Timer("a1b2", 3, 4, 5L, label = "Regroup", durationSec = 600)
+        assertEquals(p, PacketCodec.decode(PacketCodec.encode(p)))
+    }
+
+    @Test
+    fun positionWithSpeedAndCourseRoundTrips() {
+        val p = Packet.Position("a1b2", 1, 4, 9L, 52.5, 13.4, 90f, speedMps = 3.5f, courseDeg = 45f)
+        assertEquals(p, PacketCodec.decode(PacketCodec.encode(p)))
+    }
+
+    @Test
     fun emptyTextRoundTrips() {
         val p = Packet.Text("a1b2", 1, 4, 1L, senderName = "X", text = "")
         assertEquals(p, PacketCodec.decode(PacketCodec.encode(p)))

@@ -33,6 +33,17 @@ object MeshBus {
     private val _target = MutableStateFlow<Pair<Double, Double>?>(null)
     val target: StateFlow<Pair<Double, Double>?> = _target
 
+    /** Shared countdown: (label, endAtMs in local time). Null = none active. */
+    private val _countdown = MutableStateFlow<Pair<String, Long>?>(null)
+    val countdown: StateFlow<Pair<String, Long>?> = _countdown
+    fun publishCountdown(value: Pair<String, Long>?) { _countdown.value = value }
+    @Volatile var startCountdownHandler: ((label: String, seconds: Int) -> Unit)? = null
+
+    /** My current GPS speed in m/s, for ETA to a target. */
+    private val _mySpeed = MutableStateFlow(0.0)
+    val mySpeed: StateFlow<Double> = _mySpeed
+    fun publishMySpeed(mps: Double) { _mySpeed.value = mps }
+
     fun setTarget(lat: Double, lon: Double) { _target.value = lat to lon }
     fun clearTarget() { _target.value = null }
 

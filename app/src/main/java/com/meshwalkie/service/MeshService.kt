@@ -131,12 +131,15 @@ class MeshService : Service() {
             hasFix = true
             MeshBus.publishWaitingForGps(false)
             MeshBus.publishMyLocation(fix.latitude, fix.longitude)
+            MeshBus.publishMySpeed(if (fix.hasSpeed()) fix.speed.toDouble() else 0.0)
             // Privacy: only broadcast my position when GPS sharing is enabled.
             if (Settings.gpsEnabled.value) {
                 engine.send(
                     Packet.Position(
                         originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
-                        System.currentTimeMillis(), fix.latitude, fix.longitude, myHeading
+                        System.currentTimeMillis(), fix.latitude, fix.longitude, myHeading,
+                        speedMps = if (fix.hasSpeed()) fix.speed else 0f,
+                        courseDeg = if (fix.hasBearing()) fix.bearing else -1f
                     )
                 )
             }
@@ -188,6 +191,7 @@ class MeshService : Service() {
         MeshBus.dropWaypointHandler = { label -> dropWaypoint(label) }
         MeshBus.removeWaypointHandler = { id -> waypointStore.remove(id); publishPeers() }
         MeshBus.dropWaypointAtHandler = { lat, lon, label -> dropWaypointAt(lat, lon, label) }
+        MeshBus.startCountdownHandler = { label, sec -> startCountdown(label, sec) }
         voicePlayer.onClipPlayed = { senderId, clipId ->
             val name = registry.nameOf(senderId) ?: senderId
             MeshBus.publishLastVoice("Last message from $name")
@@ -242,6 +246,10 @@ class MeshService : Service() {
                 waypointStore.add(packet.dedupKey, packet.senderName, packet.lat, packet.lon, packet.label)
                 beep()
             }
+            if (packet is Packet.Timer) {
+                MeshBus.publishCountdown(packet.label to (System.currentTimeMillis() + packet.durationSec * 1000L))
+                beep()
+            }
             if (packet is Packet.Host) onHostAnnounced(packet)
             if (packet is Packet.Ack && packet.refOriginId == originId) {
                 val ackers = acksByClip.getOrPut(packet.refClipId) { mutableSetOf() }
@@ -292,6 +300,7 @@ class MeshService : Service() {
 
     /** Audible alert when a quick-text arrives (not for voice). */
     private fun beep() {
+        if (Settings.muteSounds.value) return
         try {
             tone.startTone(android.media.ToneGenerator.TONE_PROP_BEEP2, 250)
         } catch (_: Exception) {
@@ -300,6 +309,7 @@ class MeshService : Service() {
 
     /** Distinct alert when a connected device drops off the mesh. */
     private fun offlineBeep() {
+        if (Settings.muteSounds.value) return
         try {
             tone.startTone(android.media.ToneGenerator.TONE_SUP_ERROR, 400)
         } catch (_: Exception) {
@@ -383,6 +393,17 @@ class MeshService : Service() {
         if (!hasFix) return
         MeshBus.publishPeers(registry.snapshot(myLat, myLon, now))
         MeshBus.publishWaypoints(waypointStore.snapshot(myLat, myLon))
+    }
+
+    private fun startCountdown(label: String, seconds: Int) {
+        if (seconds <= 0) return
+        engine.send(
+            Packet.Timer(
+                originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
+                System.currentTimeMillis(), label.ifBlank { "Regroup" }, seconds
+            )
+        )
+        MeshBus.publishCountdown(label.ifBlank { "Regroup" } to (System.currentTimeMillis() + seconds * 1000L))
     }
 
     private fun onHostAnnounced(p: Packet.Host) {
@@ -498,6 +519,7 @@ class MeshService : Service() {
         MeshBus.dropWaypointHandler = null
         MeshBus.removeWaypointHandler = null
         MeshBus.dropWaypointAtHandler = null
+        MeshBus.startCountdownHandler = null
         MeshBus.joinHandler = null
         MeshBus.leaveHostHandler = null
         voicePlayer.onClipPlayed = null

@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -54,13 +55,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Settings.init(this)
+        // Black system bars (was a light theme showing a white status bar).
+        window.statusBarColor = android.graphics.Color.BLACK
+        window.navigationBarColor = android.graphics.Color.BLACK
         setContent {
             val dark by Settings.darkMode.collectAsStateWithLifecycle()
-            // OLED-friendly true black in dark mode.
-            val colors = if (dark) {
-                darkColorScheme(background = Color.Black, surface = Color.Black)
-            } else {
-                lightColorScheme()
+            val night by Settings.nightMode.collectAsStateWithLifecycle()
+            val red = Color(0xFFD0342C)
+            val colors = when {
+                night -> darkColorScheme(
+                    background = Color.Black, surface = Color.Black,
+                    onBackground = red, onSurface = red,
+                    primary = red, onPrimary = Color.Black,
+                    surfaceVariant = Color(0xFF2A0000), onSurfaceVariant = red
+                )
+                dark -> darkColorScheme(background = Color.Black, surface = Color.Black)
+                else -> lightColorScheme()
             }
             MaterialTheme(colorScheme = colors) {
                 Surface(color = MaterialTheme.colorScheme.background) {
@@ -80,6 +90,22 @@ class MainActivity : ComponentActivity() {
             }
         }
         ensurePermissionsThenStart()
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (Settings.volumePtt.value && keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            if (event?.repeatCount == 0) com.meshwalkie.service.MeshBus.pttHandler?.invoke(true)
+            return true   // consume so it doesn't change volume
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (Settings.volumePtt.value && keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            com.meshwalkie.service.MeshBus.pttHandler?.invoke(false)
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
     }
 
     override fun onResume() {

@@ -11,15 +11,17 @@ object PacketCodec {
     private const val TYPE_TEXT: Byte = 5
     private const val TYPE_ACK: Byte = 6
     private const val TYPE_HOST: Byte = 7
+    private const val TYPE_TIMER: Byte = 8
 
     fun encode(p: Packet): ByteArray {
         val originBytes = p.originId.toByteArray(Charsets.UTF_8)
         require(originBytes.size <= 255) { "originId too long" }
         val header = 1 + 1 + originBytes.size + 4 + 1 + 8
         val buf: ByteBuffer = when (p) {
-            is Packet.Position -> ByteBuffer.allocate(header + 8 + 8 + 4).also {
+            is Packet.Position -> ByteBuffer.allocate(header + 8 + 8 + 4 + 4 + 4).also {
                 it.put(TYPE_POSITION); putHeader(it, p, originBytes)
                 it.putDouble(p.lat); it.putDouble(p.lon); it.putFloat(p.headingDeg)
+                it.putFloat(p.speedMps); it.putFloat(p.courseDeg)
             }
             is Packet.Voice -> {
                 require(p.opusData.size <= 65535) { "voice frame too large" }
@@ -71,6 +73,15 @@ object PacketCodec {
                     it.putInt(p.refClipId)
                 }
             }
+            is Packet.Timer -> {
+                val labelBytes = p.label.toByteArray(Charsets.UTF_8)
+                require(labelBytes.size <= 255) { "label too long" }
+                ByteBuffer.allocate(header + 1 + labelBytes.size + 4).also {
+                    it.put(TYPE_TIMER); putHeader(it, p, originBytes)
+                    it.put(labelBytes.size.toByte()); it.put(labelBytes)
+                    it.putInt(p.durationSec)
+                }
+            }
             is Packet.Host -> {
                 val nameBytes = p.name.toByteArray(Charsets.UTF_8)
                 val ipBytes = p.ip.toByteArray(Charsets.UTF_8)
@@ -99,7 +110,8 @@ object PacketCodec {
             return when (type) {
                 TYPE_POSITION -> Packet.Position(
                     originId, seqNum, ttl, ts,
-                    lat = buf.getDouble(), lon = buf.getDouble(), headingDeg = buf.getFloat()
+                    lat = buf.getDouble(), lon = buf.getDouble(), headingDeg = buf.getFloat(),
+                    speedMps = buf.getFloat(), courseDeg = buf.getFloat()
                 )
                 TYPE_VOICE -> {
                     val clipId = buf.getInt()
@@ -133,6 +145,11 @@ object PacketCodec {
                     val refLen = buf.get().toInt() and 0xFF
                     val refOrigin = String(ByteArray(refLen).also { buf.get(it) }, Charsets.UTF_8)
                     Packet.Ack(originId, seqNum, ttl, ts, refOrigin, buf.getInt())
+                }
+                TYPE_TIMER -> {
+                    val llen = buf.get().toInt() and 0xFF
+                    val label = String(ByteArray(llen).also { buf.get(it) }, Charsets.UTF_8)
+                    Packet.Timer(originId, seqNum, ttl, ts, label, buf.getInt())
                 }
                 TYPE_HOST -> {
                     val nameLen = buf.get().toInt() and 0xFF

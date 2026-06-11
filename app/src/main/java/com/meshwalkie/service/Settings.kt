@@ -24,6 +24,9 @@ object Settings {
     private const val KEY_NET_CLIENT = "net_client"
     private const val KEY_GPS = "gps_enabled"
     private const val KEY_OFFLINE_SOUND = "offline_sound"
+    private const val KEY_VOLUME_PTT = "volume_ptt"
+    private const val KEY_MUTE = "mute_sounds"
+    private const val KEY_NIGHT = "night_mode"
 
     private lateinit var appContext: Context
 
@@ -74,6 +77,18 @@ object Settings {
     private val _offlineSound = MutableStateFlow(false)
     val offlineSound: StateFlow<Boolean> = _offlineSound
 
+    /** Hold volume-down as push-to-talk (eyes-free, glove-friendly). */
+    private val _volumePtt = MutableStateFlow(false)
+    val volumePtt: StateFlow<Boolean> = _volumePtt
+
+    /** Mute all alert tones (beeps). */
+    private val _muteSounds = MutableStateFlow(false)
+    val muteSounds: StateFlow<Boolean> = _muteSounds
+
+    /** Night mode: red-tinted UI to preserve night vision. */
+    private val _nightMode = MutableStateFlow(false)
+    val nightMode: StateFlow<Boolean> = _nightMode
+
     /** Stable device id (read-only), shown in settings. */
     var deviceId: String = ""
         private set
@@ -97,6 +112,27 @@ object Settings {
         _internetClient.value = prefs.getBoolean(KEY_NET_CLIENT, false)
         _gpsEnabled.value = prefs.getBoolean(KEY_GPS, true)
         _offlineSound.value = prefs.getBoolean(KEY_OFFLINE_SOUND, false)
+        _volumePtt.value = prefs.getBoolean(KEY_VOLUME_PTT, false)
+        _muteSounds.value = prefs.getBoolean(KEY_MUTE, false)
+        _nightMode.value = prefs.getBoolean(KEY_NIGHT, false)
+    }
+
+    fun setVolumePtt(on: Boolean) {
+        _volumePtt.value = on
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_VOLUME_PTT, on).apply()
+    }
+
+    fun setMuteSounds(on: Boolean) {
+        _muteSounds.value = on
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_MUTE, on).apply()
+    }
+
+    fun setNightMode(on: Boolean) {
+        _nightMode.value = on
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_NIGHT, on).apply()
     }
 
     fun setGpsEnabled(on: Boolean) {

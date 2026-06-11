@@ -20,7 +20,9 @@ sealed class Packet {
         override val timestampMs: Long,
         val lat: Double,
         val lon: Double,
-        val headingDeg: Float
+        val headingDeg: Float,
+        val speedMps: Float = 0f,        // GPS speed
+        val courseDeg: Float = -1f       // GPS travel bearing; -1 = unknown
     ) : Packet() {
         override val dedupKey get() = "$originId:$seqNum"
         override fun withTtl(newTtl: Int) = copy(ttl = newTtl)
@@ -86,6 +88,19 @@ sealed class Packet {
         val lat: Double,
         val lon: Double,
         val label: String
+    ) : Packet() {
+        override val dedupKey get() = "$originId:$seqNum"
+        override fun withTtl(newTtl: Int) = copy(ttl = newTtl)
+    }
+
+    /** Shared countdown ("regroup in N min"). durationSec from the moment sent. */
+    data class Timer(
+        override val originId: String,
+        override val seqNum: Int,
+        override val ttl: Int,
+        override val timestampMs: Long,
+        val label: String,
+        val durationSec: Int
     ) : Packet() {
         override val dedupKey get() = "$originId:$seqNum"
         override fun withTtl(newTtl: Int) = copy(ttl = newTtl)

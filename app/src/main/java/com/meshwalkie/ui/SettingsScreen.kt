@@ -47,6 +47,9 @@ fun SettingsScreen(onBack: () -> Unit) {
     val netClient by Settings.internetClient.collectAsStateWithLifecycle()
     val gpsOn by Settings.gpsEnabled.collectAsStateWithLifecycle()
     val offlineSound by Settings.offlineSound.collectAsStateWithLifecycle()
+    val volumePtt by Settings.volumePtt.collectAsStateWithLifecycle()
+    val muteSounds by Settings.muteSounds.collectAsStateWithLifecycle()
+    val nightMode by Settings.nightMode.collectAsStateWithLifecycle()
     val myHostIp by MeshBus.myHostIp.collectAsStateWithLifecycle()
     val savedName by Settings.displayName.collectAsStateWithLifecycle()
     val savedGroup by Settings.groupCode.collectAsStateWithLifecycle()
@@ -153,6 +156,39 @@ fun SettingsScreen(onBack: () -> Unit) {
         ) {
             Text("Sound if a device goes offline", style = MaterialTheme.typography.labelLarge)
             Switch(checked = offlineSound, onCheckedChange = { Settings.setOfflineSound(it) })
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Volume-down = push to talk", style = MaterialTheme.typography.labelLarge)
+            Switch(checked = volumePtt, onCheckedChange = { Settings.setVolumePtt(it) })
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Mute all sounds", style = MaterialTheme.typography.labelLarge)
+            Switch(checked = muteSounds, onCheckedChange = { Settings.setMuteSounds(it) })
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Night mode (red, night vision)", style = MaterialTheme.typography.labelLarge)
+            Switch(checked = nightMode, onCheckedChange = { Settings.setNightMode(it) })
         }
 
         Spacer(Modifier.height(20.dp))
