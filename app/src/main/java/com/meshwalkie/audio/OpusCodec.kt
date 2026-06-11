@@ -1,145 +1,49 @@
 package com.meshwalkie.audio
 
-import android.media.MediaCodec
-import android.media.MediaFormat
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
+import com.meshwalkie.core.AdpcmCodec
 
 /**
- * Synchronous MediaCodec Opus wrapper. 16 kHz mono, 20 ms packets
- * (320 samples) - matches VoiceFramer's packetDurationMs = 20.
+ * Voice codec for the PTT pipeline.
+ *
+ * Uses IMA ADPCM (4-bit, ~8 KB/s at 16 kHz) rather than Opus: the MediaCodec
+ * Opus path decoded to noise (the Android Opus csd-0/1/2 handshake is fragile),
+ * and ADPCM is pure-Kotlin, robust, ~4x smaller than raw PCM, and unit-tested.
+ * Each FRAME_SAMPLES chunk is an independent ADPCM block, so packets survive
+ * loss/reordering on the mesh. The Encoded(config, packets) shape is preserved
+ * (config is empty) so the framer, reorder buffer, sender and player are
+ * unchanged - only the bytes differ. Opus remains a future bandwidth option.
  */
 class OpusCodec {
 
     data class Encoded(val config: ByteArray, val packets: List<ByteArray>)
 
-    /** PCM16 -> Opus packets + the codec-config (identification header). */
+    /** PCM16 -> independent ADPCM blocks of FRAME_SAMPLES. config is empty. */
     fun encode(pcm: ShortArray): Encoded {
-        val codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_OPUS)
-        val format = MediaFormat.createAudioFormat(
-            MediaFormat.MIMETYPE_AUDIO_OPUS, SAMPLE_RATE, CHANNELS
-        ).apply { setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE) }
-        codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-        codec.start()
-
-        var config = ByteArray(0)
         val packets = mutableListOf<ByteArray>()
-        var inOffset = 0
-        var inputDone = false
-        // Guard against an infinite spin if EOS never arrives once input is done.
-        var stalls = 0
-        val info = MediaCodec.BufferInfo()
-
-        try {
-            while (true) {
-                if (!inputDone) {
-                    val inIdx = codec.dequeueInputBuffer(TIMEOUT_US)
-                    if (inIdx >= 0) {
-                        val inBuf = codec.getInputBuffer(inIdx)!!.apply { clear() }
-                        val samples = minOf(FRAME_SAMPLES, pcm.size - inOffset)
-                        if (samples <= 0) {
-                            codec.queueInputBuffer(
-                                inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM
-                            )
-                            inputDone = true
-                        } else {
-                            inBuf.order(ByteOrder.LITTLE_ENDIAN)
-                            for (i in 0 until samples) inBuf.putShort(pcm[inOffset + i])
-                            inOffset += samples
-                            codec.queueInputBuffer(inIdx, 0, samples * 2, 0, 0)
-                        }
-                    }
-                }
-                val outIdx = codec.dequeueOutputBuffer(info, TIMEOUT_US)
-                if (outIdx >= 0) {
-                    stalls = 0
-                    val outBuf = codec.getOutputBuffer(outIdx)!!
-                    outBuf.position(info.offset)
-                    outBuf.limit(info.offset + info.size)
-                    val out = ByteArray(info.size)
-                    outBuf.get(out)
-                    codec.releaseOutputBuffer(outIdx, false)
-                    if (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
-                        config = out
-                    } else if (info.size > 0) {
-                        packets += out
-                    }
-                    if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
-                } else if (inputDone && ++stalls > MAX_DRAIN_STALLS) {
-                    throw IllegalStateException("opus codec drained without EOS")
-                }
-            }
-        } finally {
-            codec.stop(); codec.release()
+        var offset = 0
+        while (offset < pcm.size) {
+            val n = minOf(FRAME_SAMPLES, pcm.size - offset)
+            packets += AdpcmCodec.encodeBlock(pcm, offset, n)
+            offset += n
         }
-        return Encoded(config, packets)
+        return Encoded(ByteArray(0), packets)
     }
 
-    /** Opus packets -> PCM16. config = csd-0 captured by encode(). */
+    /** ADPCM blocks -> PCM16. config is ignored (empty). */
     fun decode(config: ByteArray, packets: List<ByteArray>): ShortArray {
-        val codec = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_AUDIO_OPUS)
-        val zeros64 = ByteBuffer.allocate(8).order(ByteOrder.nativeOrder()).putLong(0L)
-            .apply { flip() }
-        val format = MediaFormat.createAudioFormat(
-            MediaFormat.MIMETYPE_AUDIO_OPUS, SAMPLE_RATE, CHANNELS
-        ).apply {
-            setByteBuffer("csd-0", ByteBuffer.wrap(config))
-            setByteBuffer("csd-1", zeros64.duplicate())  // pre-skip ns = 0
-            setByteBuffer("csd-2", zeros64.duplicate())  // seek pre-roll ns = 0
+        val chunks = packets.map { AdpcmCodec.decodeBlock(it) }
+        val out = ShortArray(chunks.sumOf { it.size })
+        var idx = 0
+        for (c in chunks) {
+            System.arraycopy(c, 0, out, idx, c.size)
+            idx += c.size
         }
-        codec.configure(format, null, null, 0)
-        codec.start()
-
-        val pcmOut = mutableListOf<Short>()
-        var packetIdx = 0
-        var inputDone = false
-        // Guard against an infinite spin if EOS never arrives once input is done.
-        var stalls = 0
-        val info = MediaCodec.BufferInfo()
-
-        try {
-            while (true) {
-                if (!inputDone) {
-                    val inIdx = codec.dequeueInputBuffer(TIMEOUT_US)
-                    if (inIdx >= 0) {
-                        if (packetIdx >= packets.size) {
-                            codec.queueInputBuffer(
-                                inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM
-                            )
-                            inputDone = true
-                        } else {
-                            val packet = packets[packetIdx++]
-                            codec.getInputBuffer(inIdx)!!.apply { clear(); put(packet) }
-                            codec.queueInputBuffer(inIdx, 0, packet.size, 0, 0)
-                        }
-                    }
-                }
-                val outIdx = codec.dequeueOutputBuffer(info, TIMEOUT_US)
-                if (outIdx >= 0) {
-                    stalls = 0
-                    val buf = codec.getOutputBuffer(outIdx)!!.order(ByteOrder.LITTLE_ENDIAN)
-                    buf.position(info.offset)
-                    buf.limit(info.offset + info.size)
-                    repeat(info.size / 2) { pcmOut += buf.short }
-                    codec.releaseOutputBuffer(outIdx, false)
-                    if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
-                } else if (inputDone && ++stalls > MAX_DRAIN_STALLS) {
-                    throw IllegalStateException("opus codec drained without EOS")
-                }
-            }
-        } finally {
-            codec.stop(); codec.release()
-        }
-        return pcmOut.toShortArray()
+        return out
     }
 
     companion object {
         const val SAMPLE_RATE = 16_000
         const val CHANNELS = 1
         const val FRAME_SAMPLES = 320      // 20 ms at 16 kHz
-        const val BIT_RATE = 24_000
-        private const val TIMEOUT_US = 10_000L
-        // Cap on consecutive INFO_TRY_AGAIN_LATER after input EOS submitted (~10 s at 10 ms timeout).
-        private const val MAX_DRAIN_STALLS = 1000
     }
 }

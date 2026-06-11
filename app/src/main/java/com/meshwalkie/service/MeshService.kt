@@ -165,7 +165,7 @@ class MeshService : Service() {
 
     /** Leave the current group and join [group]: stop old radio, bind fresh. */
     private fun rejoin(group: String) {
-        MeshBus.publishStatus("Wechsle Gruppe…")
+        MeshBus.publishStatus("Switching group…")
         transport.stop()
         bindTransport(group)
     }
@@ -192,9 +192,9 @@ class MeshService : Service() {
     }
 
     private fun statusText(links: Int): String = when (links) {
-        0 -> "Suche Geraete in Reichweite…"
-        1 -> "1 Geraet verbunden"
-        else -> "$links Geraete verbunden"
+        0 -> "Searching for devices…"
+        1 -> "1 device connected"
+        else -> "$links devices connected"
     }
 
     private fun buildNotification(): Notification {

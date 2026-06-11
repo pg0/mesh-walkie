@@ -29,7 +29,7 @@ object MeshBus {
     val linkCount: StateFlow<Int> = _linkCount
 
     /** Human-readable mesh status, e.g. "Suche Geraete…" / "1 Geraet verbunden". */
-    private val _status = MutableStateFlow("Starte Mesh…")
+    private val _status = MutableStateFlow("Starting mesh…")
     val status: StateFlow<String> = _status
 
     @Volatile var pttHandler: ((pressed: Boolean) -> Unit)? = null

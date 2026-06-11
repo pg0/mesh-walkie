@@ -22,7 +22,9 @@ class VoiceSender(
         val encoded = codec.encode(pcm)
 
         val frames = mutableListOf<ByteArray>()
-        val framer = VoiceFramer() // 1 s frames of 20 ms packets
+        // 1 s frames: ADPCM is ~165 B / 20 ms packet, so a frame is ~8 KB,
+        // well under the Nearby BYTES payload limit (32 KB).
+        val framer = VoiceFramer(frameDurationMs = 1000)
         encoded.packets.forEach { packet -> framer.add(packet)?.let { frames += it } }
         framer.flush()?.let { frames += it }
 

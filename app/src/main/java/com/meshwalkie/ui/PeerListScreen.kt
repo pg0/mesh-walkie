@@ -46,12 +46,12 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Mesh Walkie", style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = onOpenSettings) { Text("Einstellungen") }
+            TextButton(onClick = onOpenSettings) { Text("Settings") }
         }
         Text(status, style = MaterialTheme.typography.bodyMedium)
         if (waitingForGps) {
             Text(
-                "Warte auf GPS-Fix - Pfeil und Distanz erscheinen, sobald beide Geraete drausen einen Fix haben.",
+                "Waiting for GPS fix - arrow and distance appear once both phones have a fix outdoors.",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp)
             )
@@ -69,7 +69,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
             if (rosterOnly.isNotEmpty()) {
                 item {
                     Text(
-                        "Verbunden (warten auf GPS)",
+                        "Connected (waiting for GPS)",
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
                     )
@@ -81,8 +81,8 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
             if (peers.isEmpty() && roster.isEmpty()) {
                 item {
                     Text(
-                        if (linkCount == 0) "Kein anderes Geraet in Reichweite. Zweites Handy mit gleicher Gruppe oeffnen."
-                        else "Verbunden, warte auf Daten der Peers…",
+                        if (linkCount == 0) "No other device in range. Open the app on a second phone with the same group."
+                        else "Connected, waiting for peer data…",
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 8.dp)
                     )
@@ -128,7 +128,7 @@ fun RosterRow(entry: PeerRosterEntry) {
         Column(modifier = Modifier.weight(1f)) {
             Text(entry.name, style = MaterialTheme.typography.titleMedium)
             Text(
-                "ID ${entry.id}" + if (entry.hasPosition) " - Position bekannt" else " - kein GPS",
+                "ID ${entry.id}" + if (entry.hasPosition) " - position known" else " - no GPS",
                 style = MaterialTheme.typography.bodySmall
             )
         }

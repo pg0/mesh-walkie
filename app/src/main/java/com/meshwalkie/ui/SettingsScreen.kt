@@ -44,8 +44,8 @@ fun SettingsScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Einstellungen", style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = onBack) { Text("Zurueck") }
+            Text("Settings", style = MaterialTheme.typography.headlineSmall)
+            TextButton(onClick = onBack) { Text("Back") }
         }
 
         Spacer(Modifier.height(24.dp))
@@ -60,7 +60,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(20.dp))
 
-        Text("Gruppe (gleicher Code = gleiches Mesh)", style = MaterialTheme.typography.labelLarge)
+        Text("Group (same code = same mesh)", style = MaterialTheme.typography.labelLarge)
         OutlinedTextField(
             value = groupField,
             onValueChange = { groupField = it },
@@ -68,7 +68,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth()
         )
         Text(
-            "Nur Geraete mit demselben Code verbinden sich. Teile einen privaten Code fuer eine private Gruppe.",
+            "Only devices with the same code connect. Share a private code for a private group.",
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 4.dp)
         )
@@ -80,7 +80,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Dark Mode (OLED)", style = MaterialTheme.typography.labelLarge)
+            Text("Dark mode (OLED)", style = MaterialTheme.typography.labelLarge)
             Switch(checked = dark, onCheckedChange = { Settings.setDarkMode(it) })
         }
 
@@ -95,12 +95,12 @@ fun SettingsScreen(onBack: () -> Unit) {
                 onBack()
             },
             modifier = Modifier.fillMaxWidth()
-        ) { Text("Speichern") }
+        ) { Text("Save") }
 
         Spacer(Modifier.height(24.dp))
 
         Text(
-            "Geraete-ID: ${Settings.deviceId}",
+            "Device ID: ${Settings.deviceId}",
             style = MaterialTheme.typography.bodySmall
         )
     }
