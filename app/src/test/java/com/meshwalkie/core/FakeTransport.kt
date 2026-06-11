@@ -9,7 +9,10 @@ class FakeTransport : Transport {
     private val links = mutableListOf<FakeTransport>()
     private var handler: ((ByteArray) -> Unit)? = null
 
+    var broadcastCount = 0
+
     override fun broadcast(bytes: ByteArray) {
+        broadcastCount++
         links.forEach { it.handler?.invoke(bytes) }
     }
 

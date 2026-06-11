@@ -45,6 +45,17 @@ class MeshEngineTest {
         assertEquals(1, b.delivered.size)   // exactly once despite two paths
         assertEquals(1, c.delivered.size)
         assertEquals(0, a.delivered.size)   // own echo dropped, never self-delivered
+
+        // Storm-prevention: broadcasts are bounded.
+        // Derivation: A originates (1). B re-broadcasts its first-seen copy (1).
+        // C re-broadcasts its first-seen copy (1). All subsequent arrivals are
+        // deduped and dropped. Total = 3. A storm (undeduped loop) would make
+        // this blow up instead of StackOverflowing.
+        assertEquals(
+            "broadcast storm detected",
+            3,
+            a.transport.broadcastCount + b.transport.broadcastCount + c.transport.broadcastCount
+        )
     }
 
     @Test
