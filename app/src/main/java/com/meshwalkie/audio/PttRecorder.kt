@@ -19,7 +19,7 @@ class PttRecorder {
     @SuppressLint("MissingPermission")
     fun record(
         isHeld: () -> Boolean,
-        maxMs: Int = 15_000,
+        maxMs: Int = 30_000,
         audioSource: Int = MediaRecorder.AudioSource.MIC
     ): ShortArray {
         val minBuf = AudioRecord.getMinBufferSize(

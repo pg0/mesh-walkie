@@ -40,7 +40,7 @@ class VadRecorder {
         var speaking = false
         var silenceMs = 0
         val hangoverMs = 800
-        val maxSamples = OpusCodec.SAMPLE_RATE * 15
+        val maxSamples = OpusCodec.SAMPLE_RATE * 30
         try {
             recorder.startRecording()
             while (running) {
