@@ -39,6 +39,13 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
     /** When true, received clips are decoded + cached for replay but not played aloud. */
     @Volatile var muted = false
 
+    /**
+     * True while THIS device is recording (PTT held / VAD capturing). Half-duplex:
+     * suppress playback so the far side's voice coming out of our speaker is not
+     * picked up by our open mic and recorded into our own clip (acoustic echo).
+     */
+    @Volatile var transmitting = false
+
     /** Fired (off the lock) when a clip finishes assembling: sender id + clip id. */
     @Volatile var onClipPlayed: ((senderId: String, clipId: Int) -> Unit)? = null
 
@@ -91,7 +98,9 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
     }
 
     private fun play(pcm: ShortArray, force: Boolean = false) {
-        if (pcm.isEmpty() || (muted && !force)) return   // muted: cached for replay, just not played
+        // muted: cached for replay, just not played. transmitting: half-duplex,
+        // don't leak the far side into our open mic. force (replay) bypasses both.
+        if (pcm.isEmpty() || (!force && (muted || transmitting))) return
         val bytes = ByteBuffer.allocate(pcm.size * 2).order(ByteOrder.LITTLE_ENDIAN)
         pcm.forEach { bytes.putShort(it) }
         val track = AudioTrack.Builder()
