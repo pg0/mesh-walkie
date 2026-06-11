@@ -128,6 +128,7 @@ class MeshService : Service() {
         MeshBus.replayHandler = { voicePlayer.replayLast() }
         MeshBus.sendTextHandler = { text -> sendText(text) }
         MeshBus.dropWaypointHandler = { label -> dropWaypoint(label) }
+        MeshBus.removeWaypointHandler = { id -> waypointStore.remove(id); publishPeers() }
         voicePlayer.onClipPlayed = { senderId ->
             val name = registry.nameOf(senderId) ?: senderId
             MeshBus.publishLastVoice("Last message from $name")
@@ -274,6 +275,7 @@ class MeshService : Service() {
         MeshBus.replayHandler = null
         MeshBus.sendTextHandler = null
         MeshBus.dropWaypointHandler = null
+        MeshBus.removeWaypointHandler = null
         voicePlayer.onClipPlayed = null
         pttHeld.set(false)
         locationSource.stop()

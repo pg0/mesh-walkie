@@ -112,7 +112,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             }
             // Shared waypoints (rally points).
             items(waypoints, key = { "w_${it.id}" }) { wp ->
-                WaypointRow(wp, heading)
+                WaypointRow(wp, heading) { MeshBus.removeWaypointHandler?.invoke(wp.id) }
             }
             // Full arrow rows when positions are known.
             items(peers, key = { "p_${it.id}" }) { peer ->
@@ -176,7 +176,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             QuickTextWheel(onSend = { MeshBus.sendTextHandler?.invoke(it) })
-            TextButton(onClick = { showType = true }) { Text("Type") }
+            TextButton(onClick = { showType = true }) { Text("Msg") }
             TextButton(onClick = { showWp = true }) { Text("Drop WP") }
         }
         Row(
@@ -258,7 +258,7 @@ fun TargetRow(target: Pair<Double, Double>, myLoc: Pair<Double, Double>, myHeadi
 }
 
 @Composable
-fun WaypointRow(wp: WaypointView, myHeadingDeg: Float) {
+fun WaypointRow(wp: WaypointView, myHeadingDeg: Float, onDelete: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
@@ -275,6 +275,7 @@ fun WaypointRow(wp: WaypointView, myHeadingDeg: Float) {
             )
             Text("by ${wp.senderName}", style = MaterialTheme.typography.bodyMedium)
         }
+        TextButton(onClick = onDelete) { Text("✕") }
     }
 }
 
