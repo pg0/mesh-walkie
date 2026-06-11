@@ -36,9 +36,9 @@ object MeshBus {
     private val _lastVoice = MutableStateFlow<String?>(null)
     val lastVoice: StateFlow<String?> = _lastVoice
 
-    /** Last quick-text seen (sent or received), e.g. "Alice: OK". */
-    private val _lastText = MutableStateFlow<String?>(null)
-    val lastText: StateFlow<String?> = _lastText
+    /** Quick-text history (sent + received), newest last, capped at 10. */
+    private val _messages = MutableStateFlow<List<String>>(emptyList())
+    val messages: StateFlow<List<String>> = _messages
 
     @Volatile var pttHandler: ((pressed: Boolean) -> Unit)? = null
 
@@ -55,5 +55,5 @@ object MeshBus {
     fun publishLinkCount(n: Int) { _linkCount.value = n }
     fun publishStatus(text: String) { _status.value = text }
     fun publishLastVoice(text: String) { _lastVoice.value = text }
-    fun publishText(text: String) { _lastText.value = text }
+    fun publishText(text: String) { _messages.value = (_messages.value + text).takeLast(10) }
 }

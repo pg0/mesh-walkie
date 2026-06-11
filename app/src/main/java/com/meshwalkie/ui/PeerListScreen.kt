@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -42,7 +43,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
     val linkCount by MeshBus.linkCount.collectAsStateWithLifecycle()
     val roster by MeshBus.roster.collectAsStateWithLifecycle()
     val lastVoice by MeshBus.lastVoice.collectAsStateWithLifecycle()
-    val lastText by MeshBus.lastText.collectAsStateWithLifecycle()
+    val messages by MeshBus.messages.collectAsStateWithLifecycle()
     var showRadar by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -105,8 +106,17 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
                 }
             }
         }
-        lastText?.let { lt ->
-            Text("💬 $lt", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
+        if (messages.isNotEmpty()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 120.dp)
+                    .padding(top = 8.dp)
+            ) {
+                items(messages) { m ->
+                    Text("💬 $m", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
         }
         lastVoice?.let { lv ->
             Row(

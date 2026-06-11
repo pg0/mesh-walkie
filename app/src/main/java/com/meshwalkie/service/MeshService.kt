@@ -157,7 +157,10 @@ class MeshService : Service() {
             router.noteMeshSeen(packet.originId, now)   // heard on mesh -> mesh route
             registry.onPacket(packet, receivedAtMs = now)
             if (packet is Packet.Voice) voicePlayer.onVoicePacket(packet)
-            if (packet is Packet.Text) MeshBus.publishText("${packet.senderName}: ${packet.text}")
+            if (packet is Packet.Text) {
+                MeshBus.publishText("${packet.senderName}: ${packet.text}")
+                beep()
+            }
             publishPeers()
         }
 
@@ -187,6 +190,17 @@ class MeshService : Service() {
             )
         )
         MeshBus.publishText("You: $clean")
+    }
+
+    private val tone by lazy {
+        android.media.ToneGenerator(android.media.AudioManager.STREAM_NOTIFICATION, 90)
+    }
+
+    private fun beep() {
+        try {
+            tone.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 150)
+        } catch (_: Exception) {
+        }
     }
 
     private fun batteryPct(): Int {
@@ -243,6 +257,7 @@ class MeshService : Service() {
         locationSource.stop()
         headingSource.stop()
         transport.stop()
+        try { tone.release() } catch (_: Exception) {}
         scope.cancel()
         super.onDestroy()
     }

@@ -1,6 +1,9 @@
 package com.meshwalkie.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -16,17 +19,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshwalkie.service.Settings
 import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Genshin-style radial shortcut wheel for preset quick-texts (editable in
- * settings). Tap to open the ring, tap a preset to send it. A tiny payload that
- * gets through links where voice fails.
+ * Radial shortcut wheel for preset quick-texts (editable in settings). Opens as
+ * a full-screen centered overlay (Genshin-style central wheel) so it never jumps
+ * around the screen. Tap a preset to send, tap the scrim or centre to cancel.
  */
 @Composable
 fun QuickTextWheel(onSend: (String) -> Unit) {
@@ -36,27 +41,33 @@ fun QuickTextWheel(onSend: (String) -> Unit) {
     TextButton(onClick = { open = true }) { Text("Quick text") }
 
     if (open) {
-        Dialog(onDismissRequest = { open = false }) {
-            Box(modifier = Modifier.size(300.dp), contentAlignment = Alignment.Center) {
-                val n = items.size.coerceAtLeast(1)
-                val radius = 110f
-                items.forEachIndexed { i, text ->
-                    val angle = Math.toRadians(-90.0 + i * 360.0 / n)
-                    Button(
-                        onClick = { onSend(text); open = false },
-                        modifier = Modifier.offset(
-                            x = (radius * cos(angle)).dp,
-                            y = (radius * sin(angle)).dp
-                        )
-                    ) { Text(text) }
-                }
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.size(64.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        TextButton(onClick = { open = false }) { Text("✕") }
+        Popup(
+            alignment = Alignment.Center,
+            onDismissRequest = { open = false },
+            properties = PopupProperties(focusable = true)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xCC000000))
+                    .clickable { open = false },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(modifier = Modifier.size(320.dp), contentAlignment = Alignment.Center) {
+                    val n = items.size.coerceAtLeast(1)
+                    val radius = 120f
+                    items.forEachIndexed { i, text ->
+                        val angle = Math.toRadians(-90.0 + i * 360.0 / n)
+                        Button(
+                            onClick = { onSend(text); open = false },
+                            modifier = Modifier.offset(
+                                x = (radius * cos(angle)).dp,
+                                y = (radius * sin(angle)).dp
+                            )
+                        ) { Text(text) }
+                    }
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+                        TextButton(onClick = { open = false }) { Text("Cancel") }
                     }
                 }
             }
