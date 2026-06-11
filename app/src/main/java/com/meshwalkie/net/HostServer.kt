@@ -1,5 +1,6 @@
 package com.meshwalkie.net
 
+import android.util.Log
 import com.meshwalkie.core.Transport
 import java.io.BufferedInputStream
 import java.io.DataInputStream
@@ -33,12 +34,15 @@ class HostServer(private val port: Int) : Transport {
                 ss.reuseAddress = true
                 ss.bind(InetSocketAddress(port))
                 server = ss
+                Log.i(TAG, "hosting on port $port")
                 while (running) {
                     val c = ss.accept()
                     clients.add(c)
+                    Log.i(TAG, "client connected: ${c.remoteSocketAddress} (${clients.size} total)")
                     Thread { readLoop(c) }.start()
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w(TAG, "server loop ended: $e")
             }
         }.start()
     }
@@ -78,4 +82,6 @@ class HostServer(private val port: Int) : Transport {
         clients.clear()
         server = null
     }
+
+    private companion object { const val TAG = "HostServer" }
 }

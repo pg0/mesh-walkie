@@ -422,6 +422,11 @@ class MeshService : Service() {
         val link = ServerLink(ip, port)
         link.onState = { c ->
             MeshBus.publishJoinedServer(c)
+            if (!c) {
+                // failed or dropped: free the slot so auto-join can retry
+                composite.remove(link)
+                if (serverLink === link) serverLink = null
+            }
             MeshBus.publishStatus(if (c) "Joined internet host $ip" else statusText(currentLinks))
         }
         link.connect()

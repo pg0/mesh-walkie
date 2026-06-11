@@ -23,9 +23,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import android.content.Intent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshwalkie.service.MeshBus
@@ -185,8 +188,28 @@ fun SettingsScreen(onBack: () -> Unit) {
             Text("Host (this device is the server)", style = MaterialTheme.typography.bodyMedium)
             Switch(checked = netHost, onCheckedChange = { Settings.setInternetHost(it) })
         }
-        myHostIp?.let {
-            Text("Hosting at [$it]:51820", style = MaterialTheme.typography.bodySmall)
+        myHostIp?.let { hip ->
+            val clipboard = LocalClipboardManager.current
+            val ctx = LocalContext.current
+            val addr = "[$hip]:51820"
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Hosting at $addr", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                TextButton(onClick = { clipboard.setText(AnnotatedString(addr)) }) { Text("Copy") }
+                TextButton(onClick = {
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, "Join my Mesh Walkie host: $addr")
+                    }
+                    ctx.startActivity(
+                        Intent.createChooser(send, "Share host address")
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                }) { Text("Share") }
+            }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
