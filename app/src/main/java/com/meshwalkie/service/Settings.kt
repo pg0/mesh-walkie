@@ -20,6 +20,7 @@ object Settings {
     private const val KEY_VAD = "vad_enabled"
     private const val KEY_VAD_SENS = "vad_sensitivity"
     private const val KEY_BREADCRUMB = "breadcrumb"
+    private const val KEY_BT_HEADSET = "bt_headset"
 
     private lateinit var appContext: Context
 
@@ -54,6 +55,10 @@ object Settings {
     private val _breadcrumbEnabled = MutableStateFlow(false)
     val breadcrumbEnabled: StateFlow<Boolean> = _breadcrumbEnabled
 
+    /** Route the mic capture to a connected Bluetooth headset (SCO). */
+    private val _btHeadset = MutableStateFlow(false)
+    val btHeadset: StateFlow<Boolean> = _btHeadset
+
     /** Stable device id (read-only), shown in settings. */
     var deviceId: String = ""
         private set
@@ -73,12 +78,19 @@ object Settings {
         _vadEnabled.value = prefs.getBoolean(KEY_VAD, false)
         _vadSensitivity.value = prefs.getInt(KEY_VAD_SENS, 50)
         _breadcrumbEnabled.value = prefs.getBoolean(KEY_BREADCRUMB, false)
+        _btHeadset.value = prefs.getBoolean(KEY_BT_HEADSET, false)
     }
 
     fun setBreadcrumbEnabled(on: Boolean) {
         _breadcrumbEnabled.value = on
         appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_BREADCRUMB, on).apply()
+    }
+
+    fun setBtHeadset(on: Boolean) {
+        _btHeadset.value = on
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_BT_HEADSET, on).apply()
     }
 
     fun setVadEnabled(on: Boolean) {

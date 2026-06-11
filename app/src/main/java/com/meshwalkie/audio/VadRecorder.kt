@@ -25,13 +25,13 @@ class VadRecorder {
     }
 
     @SuppressLint("MissingPermission")
-    fun run(threshold: Double, onClip: (ShortArray) -> Unit) {
+    fun run(threshold: Double, audioSource: Int = MediaRecorder.AudioSource.MIC, onClip: (ShortArray) -> Unit) {
         running = true
         val minBuf = AudioRecord.getMinBufferSize(
             OpusCodec.SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
         )
         val recorder = AudioRecord(
-            MediaRecorder.AudioSource.MIC, OpusCodec.SAMPLE_RATE,
+            audioSource, OpusCodec.SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
             maxOf(minBuf, OpusCodec.FRAME_SAMPLES * 2 * 4)
         )

@@ -17,14 +17,18 @@ class PttRecorder {
 
     /** Caller (MeshService) holds RECORD_AUDIO before calling. */
     @SuppressLint("MissingPermission")
-    fun record(isHeld: () -> Boolean, maxMs: Int = 15_000): ShortArray {
+    fun record(
+        isHeld: () -> Boolean,
+        maxMs: Int = 15_000,
+        audioSource: Int = MediaRecorder.AudioSource.MIC
+    ): ShortArray {
         val minBuf = AudioRecord.getMinBufferSize(
             OpusCodec.SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT
         )
         val recorder = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
+            audioSource,
             OpusCodec.SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT,

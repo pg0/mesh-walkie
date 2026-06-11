@@ -7,6 +7,9 @@ import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
+import android.media.MediaRecorder
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -158,11 +161,14 @@ class MeshService : Service() {
                     if (enabled) {
                         val threshold = vad.thresholdFor(sens)
                         vadJob = scope.launch(Dispatchers.IO) {
-                            vad.run(threshold) { pcm -> emitClip(pcm) }
+                            vad.run(threshold, micSource()) { pcm -> emitClip(pcm) }
                         }
                     }
                 }
         }
+
+        // Route mic/audio to a Bluetooth headset when the setting is on.
+        scope.launch { Settings.btHeadset.collect { on -> applyHeadsetRouting(on) } }
 
         MeshBus.pttHandler = { pressed -> onPtt(pressed) }
         MeshBus.replayHandler = { voicePlayer.replayLast() }
@@ -261,13 +267,36 @@ class MeshService : Service() {
     }
 
     private val tone by lazy {
-        android.media.ToneGenerator(android.media.AudioManager.STREAM_NOTIFICATION, 90)
+        android.media.ToneGenerator(AudioManager.STREAM_MUSIC, 100)
     }
 
+    /** Audible alert when a quick-text arrives (not for voice). */
     private fun beep() {
         try {
-            tone.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 150)
+            tone.startTone(android.media.ToneGenerator.TONE_PROP_BEEP2, 250)
         } catch (_: Exception) {
+        }
+    }
+
+    /** Mic source: route to the BT headset when enabled (API 31+), else phone mic. */
+    private fun micSource(): Int =
+        if (Settings.btHeadset.value && Build.VERSION.SDK_INT >= 31)
+            MediaRecorder.AudioSource.VOICE_COMMUNICATION
+        else MediaRecorder.AudioSource.MIC
+
+    private fun applyHeadsetRouting(on: Boolean) {
+        if (Build.VERSION.SDK_INT < 31) return
+        val am = getSystemService(AUDIO_SERVICE) as AudioManager
+        if (on) {
+            am.mode = AudioManager.MODE_IN_COMMUNICATION
+            val dev = am.availableCommunicationDevices.firstOrNull {
+                it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                    it.type == AudioDeviceInfo.TYPE_BLE_HEADSET
+            }
+            if (dev != null) am.setCommunicationDevice(dev)
+        } else {
+            am.clearCommunicationDevice()
+            am.mode = AudioManager.MODE_NORMAL
         }
     }
 
@@ -283,7 +312,7 @@ class MeshService : Service() {
         if (pressed) {
             if (pttHeld.getAndSet(true)) return
             scope.launch(Dispatchers.IO) {
-                val pcm = recorder.record(isHeld = { pttHeld.get() })
+                val pcm = recorder.record(isHeld = { pttHeld.get() }, audioSource = micSource())
                 emitClip(pcm)
             }
         } else {
@@ -372,6 +401,7 @@ class MeshService : Service() {
         voicePlayer.onClipPlayed = null
         pttHeld.set(false)
         vad.stop()
+        applyHeadsetRouting(false)
         locationSource.stop()
         headingSource.stop()
         transport.stop()
