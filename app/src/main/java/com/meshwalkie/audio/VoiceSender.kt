@@ -17,10 +17,10 @@ class VoiceSender(
     private var clipCounter = 0
 
     /** @return the clipId assigned to this clip (for delivery-receipt tracking). */
-    fun sendClip(pcm: ShortArray, nowMs: Long): Int {
+    fun sendClip(pcm: ShortArray, nowMs: Long, bitrate: Int = OpusCodec.DEFAULT_BITRATE): Int {
         if (pcm.isEmpty()) return -1
         val clipId = clipCounter++
-        val encoded = codec.encode(pcm)
+        val encoded = codec.encode(pcm, bitrate)
 
         val frames = mutableListOf<ByteArray>()
         // 1 s frames: ADPCM is ~165 B / 20 ms packet, so a frame is ~8 KB,

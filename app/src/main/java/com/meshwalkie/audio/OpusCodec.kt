@@ -21,9 +21,9 @@ class OpusCodec {
 
     data class Encoded(val config: ByteArray, val packets: List<ByteArray>)
 
-    fun encode(pcm: ShortArray): Encoded =
+    fun encode(pcm: ShortArray, bitrate: Int = DEFAULT_BITRATE): Encoded =
         try {
-            Encoded(byteArrayOf(CODEC_AMR), amrEncode(pcm))
+            Encoded(byteArrayOf(CODEC_AMR), amrEncode(pcm, bitrate))
         } catch (e: Exception) {
             Encoded(byteArrayOf(CODEC_ADPCM), adpcmEncode(pcm))
         }
@@ -39,10 +39,11 @@ class OpusCodec {
 
     // --- AMR-WB via MediaCodec -------------------------------------------------
 
-    private fun amrEncode(pcm: ShortArray): List<ByteArray> {
+    private fun amrEncode(pcm: ShortArray, bitrate: Int): List<ByteArray> {
         val codec = MediaCodec.createEncoderByType(AMR_WB)
+        val rate = if (bitrate in AMR_MODES) bitrate else DEFAULT_BITRATE
         val format = MediaFormat.createAudioFormat(AMR_WB, SAMPLE_RATE, CHANNELS)
-            .apply { setInteger(MediaFormat.KEY_BIT_RATE, AMR_BITRATE) }
+            .apply { setInteger(MediaFormat.KEY_BIT_RATE, rate) }
         codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         codec.start()
         val out = mutableListOf<ByteArray>()
@@ -158,7 +159,9 @@ class OpusCodec {
         const val CHANNELS = 1
         const val FRAME_SAMPLES = 320      // 20 ms at 16 kHz
         private const val AMR_WB = "audio/amr-wb"
-        private const val AMR_BITRATE = 23_850   // highest AMR-WB mode
+        const val DEFAULT_BITRATE = 23_850       // highest AMR-WB mode
+        /** Valid AMR-WB bitrate modes (bit/s). Anything else snaps to default. */
+        val AMR_MODES = setOf(6_600, 8_850, 12_650, 14_250, 15_850, 18_250, 19_850, 23_050, 23_850)
         private const val CODEC_AMR: Byte = 1
         private const val CODEC_ADPCM: Byte = 2
         private const val TIMEOUT_US = 10_000L

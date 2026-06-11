@@ -28,6 +28,8 @@ object Settings {
     private const val KEY_MUTE = "mute_sounds"
     private const val KEY_NIGHT = "night_mode"
     private const val KEY_TEXT_SOUND = "text_sound"
+    private const val KEY_VOICE_BITRATE = "voice_bitrate"
+    const val DEFAULT_VOICE_BITRATE = 23_850
 
     private lateinit var appContext: Context
 
@@ -94,6 +96,10 @@ object Settings {
     private val _textSound = MutableStateFlow(true)
     val textSound: StateFlow<Boolean> = _textSound
 
+    /** AMR-WB voice bitrate (bit/s). Higher = clearer, more data; lower = sparing. */
+    private val _voiceBitrate = MutableStateFlow(DEFAULT_VOICE_BITRATE)
+    val voiceBitrate: StateFlow<Int> = _voiceBitrate
+
     /** Stable device id (read-only), shown in settings. */
     var deviceId: String = ""
         private set
@@ -121,6 +127,13 @@ object Settings {
         _muteSounds.value = prefs.getBoolean(KEY_MUTE, false)
         _nightMode.value = prefs.getBoolean(KEY_NIGHT, false)
         _textSound.value = prefs.getBoolean(KEY_TEXT_SOUND, true)
+        _voiceBitrate.value = prefs.getInt(KEY_VOICE_BITRATE, DEFAULT_VOICE_BITRATE)
+    }
+
+    fun setVoiceBitrate(rate: Int) {
+        _voiceBitrate.value = rate
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putInt(KEY_VOICE_BITRATE, rate).apply()
     }
 
     fun setTextSound(on: Boolean) {

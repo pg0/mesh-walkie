@@ -370,7 +370,7 @@ class MeshService : Service() {
     private fun emitClip(pcm: ShortArray) {
         if (pcm.isEmpty()) return
         if (currentLinks > 0) {
-            lastSentClipId = voiceSender.sendClip(pcm, System.currentTimeMillis())
+            lastSentClipId = voiceSender.sendClip(pcm, System.currentTimeMillis(), Settings.voiceBitrate.value)
             MeshBus.publishSentStatus("Sent - heard by 0")
         } else if (everConnected) {
             synchronized(outbox) {
@@ -385,7 +385,7 @@ class MeshService : Service() {
 
     private fun flushOutbox() {
         val pending = synchronized(outbox) { val l = outbox.toList(); outbox.clear(); l }
-        pending.forEach { lastSentClipId = voiceSender.sendClip(it, System.currentTimeMillis()) }
+        pending.forEach { lastSentClipId = voiceSender.sendClip(it, System.currentTimeMillis(), Settings.voiceBitrate.value) }
     }
 
     private fun publishPeers() {

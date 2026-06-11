@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -51,6 +52,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     val muteSounds by Settings.muteSounds.collectAsStateWithLifecycle()
     val nightMode by Settings.nightMode.collectAsStateWithLifecycle()
     val textSound by Settings.textSound.collectAsStateWithLifecycle()
+    val voiceBitrate by Settings.voiceBitrate.collectAsStateWithLifecycle()
     val myHostIp by MeshBus.myHostIp.collectAsStateWithLifecycle()
     val savedName by Settings.displayName.collectAsStateWithLifecycle()
     val savedGroup by Settings.groupCode.collectAsStateWithLifecycle()
@@ -231,6 +233,27 @@ fun SettingsScreen(onBack: () -> Unit) {
         ) {
             Text("Bluetooth headset mic", style = MaterialTheme.typography.labelLarge)
             Switch(checked = btHeadsetOn, onCheckedChange = { Settings.setBtHeadset(it) })
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Text("Voice quality (AMR-WB)", style = MaterialTheme.typography.labelLarge)
+        Text(
+            "Higher = clearer, more data per clip. Lower stretches weak/long links.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf("Sparing\n12.65k" to 12_650, "Medium\n15.85k" to 15_850, "Best\n23.85k" to 23_850)
+                .forEach { (label, rate) ->
+                    if (voiceBitrate == rate) {
+                        Button(onClick = { Settings.setVoiceBitrate(rate) }, modifier = Modifier.weight(1f)) { Text(label) }
+                    } else {
+                        OutlinedButton(onClick = { Settings.setVoiceBitrate(rate) }, modifier = Modifier.weight(1f)) { Text(label) }
+                    }
+                }
         }
 
         Spacer(Modifier.height(20.dp))
