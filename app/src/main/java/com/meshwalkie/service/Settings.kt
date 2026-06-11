@@ -20,6 +20,8 @@ object Settings {
     private const val KEY_VAD = "vad_enabled"
     private const val KEY_VAD_SENS = "vad_sensitivity"
     private const val KEY_BT_HEADSET = "bt_headset"
+    private const val KEY_NET_HOST = "net_host"
+    private const val KEY_NET_CLIENT = "net_client"
 
     private lateinit var appContext: Context
 
@@ -54,6 +56,14 @@ object Settings {
     private val _btHeadset = MutableStateFlow(false)
     val btHeadset: StateFlow<Boolean> = _btHeadset
 
+    /** Internet fallback - host the in-app relay (this device becomes the server). */
+    private val _internetHost = MutableStateFlow(false)
+    val internetHost: StateFlow<Boolean> = _internetHost
+
+    /** Internet fallback - join an announced host over the internet. */
+    private val _internetClient = MutableStateFlow(false)
+    val internetClient: StateFlow<Boolean> = _internetClient
+
     /** Stable device id (read-only), shown in settings. */
     var deviceId: String = ""
         private set
@@ -73,12 +83,26 @@ object Settings {
         _vadEnabled.value = prefs.getBoolean(KEY_VAD, false)
         _vadSensitivity.value = prefs.getInt(KEY_VAD_SENS, 50)
         _btHeadset.value = prefs.getBoolean(KEY_BT_HEADSET, false)
+        _internetHost.value = prefs.getBoolean(KEY_NET_HOST, false)
+        _internetClient.value = prefs.getBoolean(KEY_NET_CLIENT, false)
     }
 
     fun setBtHeadset(on: Boolean) {
         _btHeadset.value = on
         appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_BT_HEADSET, on).apply()
+    }
+
+    fun setInternetHost(on: Boolean) {
+        _internetHost.value = on
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_NET_HOST, on).apply()
+    }
+
+    fun setInternetClient(on: Boolean) {
+        _internetClient.value = on
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_NET_CLIENT, on).apply()
     }
 
     fun setVadEnabled(on: Boolean) {

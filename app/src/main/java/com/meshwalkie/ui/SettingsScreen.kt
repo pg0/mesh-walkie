@@ -39,6 +39,8 @@ fun SettingsScreen(onBack: () -> Unit) {
     val vadOn by Settings.vadEnabled.collectAsStateWithLifecycle()
     val vadSens by Settings.vadSensitivity.collectAsStateWithLifecycle()
     val btHeadsetOn by Settings.btHeadset.collectAsStateWithLifecycle()
+    val netHost by Settings.internetHost.collectAsStateWithLifecycle()
+    val netClient by Settings.internetClient.collectAsStateWithLifecycle()
     val savedName by Settings.displayName.collectAsStateWithLifecycle()
     val savedGroup by Settings.groupCode.collectAsStateWithLifecycle()
     val savedQuickTexts by Settings.quickTexts.collectAsStateWithLifecycle()
@@ -152,6 +154,30 @@ fun SettingsScreen(onBack: () -> Unit) {
         ) {
             Text("Bluetooth headset mic", style = MaterialTheme.typography.labelLarge)
             Switch(checked = btHeadsetOn, onCheckedChange = { Settings.setBtHeadset(it) })
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Text("Fallback via internet", style = MaterialTheme.typography.labelLarge)
+        Text(
+            "Extends range beyond the BLE mesh. One device hosts; others join over the internet (host's IPv6 is shared on the mesh).",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Host (this device is the server)", style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = netHost, onCheckedChange = { Settings.setInternetHost(it) })
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Client (join a host)", style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = netClient, onCheckedChange = { Settings.setInternetClient(it) })
         }
 
         Spacer(Modifier.height(28.dp))

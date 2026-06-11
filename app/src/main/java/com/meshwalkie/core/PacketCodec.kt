@@ -10,6 +10,7 @@ object PacketCodec {
     private const val TYPE_WAYPOINT: Byte = 4
     private const val TYPE_TEXT: Byte = 5
     private const val TYPE_ACK: Byte = 6
+    private const val TYPE_HOST: Byte = 7
 
     fun encode(p: Packet): ByteArray {
         val originBytes = p.originId.toByteArray(Charsets.UTF_8)
@@ -70,6 +71,18 @@ object PacketCodec {
                     it.putInt(p.refClipId)
                 }
             }
+            is Packet.Host -> {
+                val nameBytes = p.name.toByteArray(Charsets.UTF_8)
+                val ipBytes = p.ip.toByteArray(Charsets.UTF_8)
+                require(nameBytes.size <= 255) { "name too long" }
+                require(ipBytes.size <= 255) { "ip too long" }
+                ByteBuffer.allocate(header + 1 + nameBytes.size + 1 + ipBytes.size + 4).also {
+                    it.put(TYPE_HOST); putHeader(it, p, originBytes)
+                    it.put(nameBytes.size.toByte()); it.put(nameBytes)
+                    it.put(ipBytes.size.toByte()); it.put(ipBytes)
+                    it.putInt(p.port)
+                }
+            }
         }
         return buf.array()
     }
@@ -120,6 +133,13 @@ object PacketCodec {
                     val refLen = buf.get().toInt() and 0xFF
                     val refOrigin = String(ByteArray(refLen).also { buf.get(it) }, Charsets.UTF_8)
                     Packet.Ack(originId, seqNum, ttl, ts, refOrigin, buf.getInt())
+                }
+                TYPE_HOST -> {
+                    val nameLen = buf.get().toInt() and 0xFF
+                    val name = String(ByteArray(nameLen).also { buf.get(it) }, Charsets.UTF_8)
+                    val ipLen = buf.get().toInt() and 0xFF
+                    val ip = String(ByteArray(ipLen).also { buf.get(it) }, Charsets.UTF_8)
+                    Packet.Host(originId, seqNum, ttl, ts, name, ip, buf.getInt())
                 }
                 else -> throw IllegalArgumentException("unknown packet type $type")
             }

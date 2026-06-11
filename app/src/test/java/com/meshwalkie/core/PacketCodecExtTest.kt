@@ -33,6 +33,12 @@ class PacketCodecExtTest {
     }
 
     @Test
+    fun hostRoundTrips() {
+        val p = Packet.Host("a1b2", 5, 4, 100L, name = "Alice", ip = "2001:db8::1", port = 51820)
+        assertEquals(p, PacketCodec.decode(PacketCodec.encode(p)))
+    }
+
+    @Test
     fun emptyTextRoundTrips() {
         val p = Packet.Text("a1b2", 1, 4, 1L, senderName = "X", text = "")
         assertEquals(p, PacketCodec.decode(PacketCodec.encode(p)))

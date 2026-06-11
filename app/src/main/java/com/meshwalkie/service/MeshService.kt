@@ -17,6 +17,7 @@ import com.meshwalkie.audio.PttRecorder
 import com.meshwalkie.audio.VadRecorder
 import com.meshwalkie.audio.VoicePlayer
 import com.meshwalkie.audio.VoiceSender
+import com.meshwalkie.core.CompositeTransport
 import com.meshwalkie.core.MeshEngine
 import com.meshwalkie.core.Packet
 import com.meshwalkie.core.PeerRegistry
@@ -25,6 +26,9 @@ import com.meshwalkie.core.WaypointStore
 import com.meshwalkie.location.HeadingSource
 import com.meshwalkie.location.LocationSource
 import com.meshwalkie.nearby.NearbyTransport
+import com.meshwalkie.net.HostServer
+import com.meshwalkie.net.NetUtil
+import com.meshwalkie.net.ServerLink
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,8 +52,12 @@ class MeshService : Service() {
 
     private lateinit var originId: String
     private lateinit var transport: NearbyTransport
+    private lateinit var composite: CompositeTransport
     private lateinit var engine: MeshEngine
     private lateinit var voiceSender: VoiceSender
+    private var hostServer: HostServer? = null
+    private var serverLink: ServerLink? = null
+    @Volatile private var knownHost: Triple<String, String, Int>? = null   // id, ip, port
     private val registry = PeerRegistry()
     private val router = TransportRouter()
     private val waypointStore = WaypointStore()
@@ -157,6 +165,14 @@ class MeshService : Service() {
         // Route mic/audio to a Bluetooth headset when the setting is on.
         scope.launch { Settings.btHeadset.collect { on -> applyHeadsetRouting(on) } }
 
+        // Internet fallback: host the relay, or join an announced host.
+        scope.launch { Settings.internetHost.collect { on -> if (on) startHost() else stopHost() } }
+        scope.launch {
+            Settings.internetClient.collect { on ->
+                if (on) knownHost?.let { joinHost(it.second, it.third) } else disconnectClient()
+            }
+        }
+
         MeshBus.pttHandler = { pressed -> onPtt(pressed) }
         MeshBus.replayHandler = { voicePlayer.replayLast() }
         MeshBus.sendTextHandler = { text -> sendText(text) }
@@ -185,6 +201,7 @@ class MeshService : Service() {
                         name = Settings.displayName.value, batteryPct = batteryPct()
                     )
                 )
+                hostServer?.let { NetUtil.globalIpv6()?.let { ip -> announceHost(ip) } }
                 publishPeers()
                 delay(10_000L)
             }
@@ -195,7 +212,9 @@ class MeshService : Service() {
     private fun bindTransport(group: String) {
         currentGroup = group
         transport = NearbyTransport(this, roomCode = group, deviceName = Settings.displayName.value)
-        engine = MeshEngine(transport)
+        composite = CompositeTransport()
+        composite.add(transport)            // BLE mesh; internet server links added on demand
+        engine = MeshEngine(composite)
         voiceSender = VoiceSender(engine, originId, nextSeq = { seq.incrementAndGet() })
 
         engine.start { packet ->
@@ -211,6 +230,7 @@ class MeshService : Service() {
                 waypointStore.add(packet.dedupKey, packet.senderName, packet.lat, packet.lon, packet.label)
                 beep()
             }
+            if (packet is Packet.Host) onHostAnnounced(packet)
             if (packet is Packet.Ack && packet.refOriginId == originId) {
                 val ackers = acksByClip.getOrPut(packet.refClipId) { mutableSetOf() }
                 ackers.add(packet.originId)
@@ -344,6 +364,56 @@ class MeshService : Service() {
         MeshBus.publishWaypoints(waypointStore.snapshot(myLat, myLon))
     }
 
+    private fun onHostAnnounced(p: Packet.Host) {
+        if (p.originId == originId) return
+        knownHost = Triple(p.originId, p.ip, p.port)
+        if (Settings.internetClient.value && serverLink == null) joinHost(p.ip, p.port)
+    }
+
+    private fun startHost() {
+        if (hostServer != null) return
+        val ip = NetUtil.globalIpv6()
+        if (ip == null) {
+            MeshBus.publishStatus("No public IPv6 - cannot host")
+            return
+        }
+        val hs = HostServer(NetUtil.DEFAULT_PORT)
+        hs.start()
+        composite.add(hs)
+        hostServer = hs
+        MeshBus.publishStatus("Hosting at [$ip]:${NetUtil.DEFAULT_PORT}")
+        announceHost(ip)
+    }
+
+    private fun announceHost(ip: String) {
+        if (!::engine.isInitialized) return
+        engine.send(
+            Packet.Host(
+                originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
+                System.currentTimeMillis(), Settings.displayName.value, ip, NetUtil.DEFAULT_PORT
+            )
+        )
+    }
+
+    private fun stopHost() {
+        hostServer?.let { composite.remove(it); it.stop() }
+        hostServer = null
+    }
+
+    private fun joinHost(ip: String, port: Int) {
+        if (serverLink != null) return
+        val link = ServerLink(ip, port)
+        link.onState = { c -> MeshBus.publishStatus(if (c) "Joined internet host" else "Internet host lost") }
+        link.connect()
+        composite.add(link)
+        serverLink = link
+    }
+
+    private fun disconnectClient() {
+        serverLink?.let { composite.remove(it); it.close() }
+        serverLink = null
+    }
+
     private fun dropWaypoint(label: String) {
         if (!hasFix) return
         dropWaypointAt(myLat, myLon, label)
@@ -388,6 +458,8 @@ class MeshService : Service() {
         voicePlayer.onClipPlayed = null
         pttHeld.set(false)
         vad.stop()
+        stopHost()
+        disconnectClient()
         applyHeadsetRouting(false)
         locationSource.stop()
         headingSource.stop()

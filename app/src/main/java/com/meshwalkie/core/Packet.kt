@@ -91,6 +91,20 @@ sealed class Packet {
         override fun withTtl(newTtl: Int) = copy(ttl = newTtl)
     }
 
+    /** Announces an in-app relay host reachable over the internet at [ip]:[port]. */
+    data class Host(
+        override val originId: String,
+        override val seqNum: Int,
+        override val ttl: Int,
+        override val timestampMs: Long,
+        val name: String,
+        val ip: String,
+        val port: Int
+    ) : Packet() {
+        override val dedupKey get() = "$originId:$seqNum"
+        override fun withTtl(newTtl: Int) = copy(ttl = newTtl)
+    }
+
     /** Delivery receipt: [originId] heard the clip (refOriginId, refClipId). */
     data class Ack(
         override val originId: String,
