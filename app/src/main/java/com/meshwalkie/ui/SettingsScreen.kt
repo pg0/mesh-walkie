@@ -1,5 +1,6 @@
 package com.meshwalkie.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +28,9 @@ import com.meshwalkie.service.Settings
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
+    // System back returns to the main screen instead of closing the app.
+    BackHandler { onBack() }
+
     val dark by Settings.darkMode.collectAsStateWithLifecycle()
     val savedName by Settings.displayName.collectAsStateWithLifecycle()
     val savedGroup by Settings.groupCode.collectAsStateWithLifecycle()

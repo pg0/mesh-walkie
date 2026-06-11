@@ -183,8 +183,12 @@ class MeshService : Service() {
     }
 
     private fun publishPeers() {
+        val now = System.currentTimeMillis()
+        // Roster (who is connected) shows regardless of GPS on either side.
+        MeshBus.publishRoster(registry.roster(now))
+        // Distance/bearing arrows need our own fix.
         if (!hasFix) return
-        MeshBus.publishPeers(registry.snapshot(myLat, myLon, System.currentTimeMillis()))
+        MeshBus.publishPeers(registry.snapshot(myLat, myLon, now))
     }
 
     private fun statusText(links: Int): String = when (links) {

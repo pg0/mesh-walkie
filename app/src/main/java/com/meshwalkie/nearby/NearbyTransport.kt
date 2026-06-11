@@ -53,6 +53,7 @@ class NearbyTransport(
         override fun onConnectionInitiated(endpointId: String, info: ConnectionInfo) {
             // Cluster topology: accept everyone in the room. Link-level crypto
             // is Nearby's; payload E2E crypto is phase 3.
+            Log.i(TAG, "connection initiated by/with ${info.endpointName} ($endpointId), accepting")
             client.acceptConnection(endpointId, payloadCallback)
         }
         override fun onConnectionResult(endpointId: String, result: ConnectionResolution) {
@@ -60,6 +61,8 @@ class NearbyTransport(
                 connected += endpointId
                 Log.i(TAG, "connected to $endpointId (${connected.size} links)")
                 onLinksChanged?.invoke(connected.size)
+            } else {
+                Log.w(TAG, "connection to $endpointId failed: ${result.status}")
             }
         }
         override fun onDisconnected(endpointId: String) {
@@ -71,12 +74,24 @@ class NearbyTransport(
 
     private val discoveryCallback = object : EndpointDiscoveryCallback() {
         override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
-            // Both sides may request simultaneously; Nearby resolves the race,
-            // the loser's request fails with STATUS_ALREADY_CONNECTED - ignore.
-            client.requestConnection(deviceName, endpointId, lifecycleCallback)
-                .addOnFailureListener { e -> Log.w(TAG, "requestConnection: $e") }
+            // Symmetric advertise+discover means BOTH sides find each other and,
+            // if both call requestConnection at once, the requests collide and
+            // neither resolves on some GMS builds. Break the tie deterministically:
+            // only the lexicographically-smaller name initiates; the other side
+            // receives onConnectionInitiated and accepts.
+            val theirName = info.endpointName
+            Log.i(TAG, "endpoint found: $theirName ($endpointId)")
+            if (deviceName < theirName) {
+                Log.i(TAG, "initiating connection to $theirName ($deviceName < $theirName)")
+                client.requestConnection(deviceName, endpointId, lifecycleCallback)
+                    .addOnFailureListener { e -> Log.w(TAG, "requestConnection: $e") }
+            } else {
+                Log.i(TAG, "waiting for $theirName to initiate ($deviceName >= $theirName)")
+            }
         }
-        override fun onEndpointLost(endpointId: String) = Unit
+        override fun onEndpointLost(endpointId: String) {
+            Log.i(TAG, "endpoint lost: $endpointId")
+        }
     }
 
     fun start() {

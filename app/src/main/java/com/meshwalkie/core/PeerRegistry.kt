@@ -13,6 +13,17 @@ data class PeerView(
 )
 
 /**
+ * Lightweight roster entry: every known peer, shown even without any GPS fix
+ * (on either side). hasPosition tells the UI whether a distance/arrow exists.
+ */
+data class PeerRosterEntry(
+    val id: String,
+    val name: String,
+    val freshness: Freshness,
+    val hasPosition: Boolean
+)
+
+/**
  * Who exists, where, how fresh. Fed by delivered packets,
  * queried by the UI with my current location.
  */
@@ -59,11 +70,28 @@ class PeerRegistry {
                 name = s.name ?: id,
                 distanceMeters = GeoMath.distanceMeters(myLat, myLon, lat, lon),
                 bearingDeg = GeoMath.bearingDegrees(myLat, myLon, lat, lon),
-                freshness = when {
-                    age < FRESH_MS -> Freshness.FRESH
-                    age < AGING_MS -> Freshness.AGING
-                    else -> Freshness.STALE
-                }
+                freshness = freshnessOf(age)
             )
         }.sortedBy { it.distanceMeters }
+
+    /**
+     * Every known peer, with or without a position - so the UI can show who is
+     * connected even before any GPS fix exists on either device.
+     */
+    @Synchronized
+    fun roster(nowMs: Long): List<PeerRosterEntry> =
+        peers.map { (id, s) ->
+            PeerRosterEntry(
+                id = id,
+                name = s.name ?: id,
+                freshness = freshnessOf(nowMs - s.lastSeenMs),
+                hasPosition = s.lat != null && s.lon != null
+            )
+        }.sortedBy { it.name }
+
+    private fun freshnessOf(age: Long): Freshness = when {
+        age < FRESH_MS -> Freshness.FRESH
+        age < AGING_MS -> Freshness.AGING
+        else -> Freshness.STALE
+    }
 }

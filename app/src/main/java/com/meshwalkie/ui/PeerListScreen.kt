@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshwalkie.core.Display
 import com.meshwalkie.core.Freshness
+import com.meshwalkie.core.PeerRosterEntry
 import com.meshwalkie.core.PeerView
 import com.meshwalkie.service.MeshBus
 
@@ -36,6 +37,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
 
     val status by MeshBus.status.collectAsStateWithLifecycle()
     val linkCount by MeshBus.linkCount.collectAsStateWithLifecycle()
+    val roster by MeshBus.roster.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
@@ -48,19 +50,43 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
         }
         Text(status, style = MaterialTheme.typography.bodyMedium)
         if (waitingForGps) {
-            Text("Warte auf GPS-Fix", style = MaterialTheme.typography.bodySmall)
-        }
-        if (peers.isEmpty()) {
             Text(
-                if (linkCount == 0) "Kein anderes Geraet in Reichweite."
-                else "Verbunden, warte auf Position der Peers…",
+                "Warte auf GPS-Fix - Pfeil und Distanz erscheinen, sobald beide Geraete drausen einen Fix haben.",
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.padding(top = 4.dp)
             )
         }
+
         LazyColumn(modifier = Modifier.weight(1f)) {
-            items(peers, key = { it.id }) { peer ->
+            // Full arrow rows when positions are known.
+            items(peers, key = { "p_${it.id}" }) { peer ->
                 PeerRow(peer = peer, myHeadingDeg = heading)
+            }
+            // Connected peers without a usable position yet (no GPS on a side):
+            // show name + id + freshness so you can see who is on the mesh.
+            val positioned = peers.map { it.id }.toSet()
+            val rosterOnly = roster.filter { it.id !in positioned }
+            if (rosterOnly.isNotEmpty()) {
+                item {
+                    Text(
+                        "Verbunden (warten auf GPS)",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
+                    )
+                }
+                items(rosterOnly, key = { "r_${it.id}" }) { entry ->
+                    RosterRow(entry)
+                }
+            }
+            if (peers.isEmpty() && roster.isEmpty()) {
+                item {
+                    Text(
+                        if (linkCount == 0) "Kein anderes Geraet in Reichweite. Zweites Handy mit gleicher Gruppe oeffnen."
+                        else "Verbunden, warte auf Daten der Peers…",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
             }
         }
         Row(
@@ -90,6 +116,23 @@ fun PeerRow(peer: PeerView, myHeadingDeg: Float) {
             Text(peer.name, style = MaterialTheme.typography.bodyMedium)
         }
         FreshnessDot(peer.freshness)
+    }
+}
+
+@Composable
+fun RosterRow(entry: PeerRosterEntry) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(entry.name, style = MaterialTheme.typography.titleMedium)
+            Text(
+                "ID ${entry.id}" + if (entry.hasPosition) " - Position bekannt" else " - kein GPS",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        FreshnessDot(entry.freshness)
     }
 }
 
