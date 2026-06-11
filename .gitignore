@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+node_modules/
+build/
+.gradle/
+*.apk
+*.keystore
+local.properties
+.idea/
+.claude/settings.local.json
