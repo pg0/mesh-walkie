@@ -122,6 +122,11 @@ class MeshService : Service() {
         }
 
         MeshBus.pttHandler = { pressed -> onPtt(pressed) }
+        MeshBus.replayHandler = { voicePlayer.replayLast() }
+        voicePlayer.onClipPlayed = { senderId ->
+            val name = registry.nameOf(senderId) ?: senderId
+            MeshBus.publishLastVoice("Last message from $name")
+        }
 
         // presence heartbeat + freshness re-render
         scope.launch {
@@ -211,6 +216,8 @@ class MeshService : Service() {
 
     override fun onDestroy() {
         MeshBus.pttHandler = null
+        MeshBus.replayHandler = null
+        voicePlayer.onClipPlayed = null
         pttHeld.set(false)
         locationSource.stop()
         headingSource.stop()

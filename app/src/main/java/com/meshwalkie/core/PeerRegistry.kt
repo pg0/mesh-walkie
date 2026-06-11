@@ -46,6 +46,10 @@ class PeerRegistry {
         const val AGING_MS = 120_000L
     }
 
+    /** Display name for a peer id, or null if unknown. */
+    @Synchronized
+    fun nameOf(id: String): String? = peers[id]?.name
+
     @Synchronized
     fun onPacket(packet: Packet, receivedAtMs: Long) {
         val state = peers.getOrPut(packet.originId) { PeerState() }

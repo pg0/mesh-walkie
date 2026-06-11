@@ -22,6 +22,7 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
 
     private class ClipState {
         val reorder = ReorderBuffer()
+        var senderId: String = ""
         var config: ByteArray? = null
         val packets = mutableListOf<ByteArray>()
         var lastFrameSeen = false
@@ -32,12 +33,19 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
 
     private val clips = HashMap<String, ClipState>()
 
+    // Last fully-received clip, kept for replay after the live playback.
+    @Volatile private var lastPcm: ShortArray? = null
+
+    /** Fired (off the lock) when a clip finishes assembling, with its sender id. */
+    @Volatile var onClipPlayed: ((senderId: String) -> Unit)? = null
+
     /** Feed every delivered Packet.Voice here. Plays when the clip is complete. */
     @Synchronized
     fun onVoicePacket(v: Packet.Voice) {
         evictStaleClips()
         val key = "${v.originId}:${v.clipId}"
         val clip = clips.getOrPut(key) { ClipState() }
+        clip.senderId = v.originId
         clip.lastActivityMs = System.currentTimeMillis()
         if (v.isLast) {
             clip.lastFrameSeen = true
@@ -54,11 +62,20 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
             clip.emittedCount == clip.lastFrameNum + 1) {
             val config = clip.config!!
             val packets = clip.packets.toList()
+            val senderId = clip.senderId
             clips.remove(key)
-            // OpusCodec.decode() builds and releases its own MediaCodec per call, so
-            // concurrent clip playback is safe even though this play thread is unsynchronized.
-            Thread { play(codec.decode(config, packets)) }.start()
+            Thread {
+                val pcm = codec.decode(config, packets)
+                lastPcm = pcm                       // keep for replay
+                onClipPlayed?.invoke(senderId)
+                play(pcm)
+            }.start()
         }
+    }
+
+    /** Replay the last fully-received clip, if any. */
+    fun replayLast() {
+        lastPcm?.let { pcm -> Thread { play(pcm) }.start() }
     }
 
     /** Drop clips that have been idle past CLIP_TIMEOUT_MS (lost-frame leak guard). */

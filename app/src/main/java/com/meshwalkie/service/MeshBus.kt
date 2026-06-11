@@ -32,7 +32,14 @@ object MeshBus {
     private val _status = MutableStateFlow("Starting mesh…")
     val status: StateFlow<String> = _status
 
+    /** Label for the last received voice message, e.g. "Last from Alice". Null = none yet. */
+    private val _lastVoice = MutableStateFlow<String?>(null)
+    val lastVoice: StateFlow<String?> = _lastVoice
+
     @Volatile var pttHandler: ((pressed: Boolean) -> Unit)? = null
+
+    /** Set by the service; UI calls it to replay the last received clip. */
+    @Volatile var replayHandler: (() -> Unit)? = null
 
     fun publishPeers(views: List<PeerView>) { _peers.value = views }
     fun publishRoster(entries: List<PeerRosterEntry>) { _roster.value = entries }
@@ -40,4 +47,5 @@ object MeshBus {
     fun publishWaitingForGps(waiting: Boolean) { _waitingForGps.value = waiting }
     fun publishLinkCount(n: Int) { _linkCount.value = n }
     fun publishStatus(text: String) { _status.value = text }
+    fun publishLastVoice(text: String) { _lastVoice.value = text }
 }

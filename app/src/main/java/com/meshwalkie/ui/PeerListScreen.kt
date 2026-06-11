@@ -38,6 +38,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
     val status by MeshBus.status.collectAsStateWithLifecycle()
     val linkCount by MeshBus.linkCount.collectAsStateWithLifecycle()
     val roster by MeshBus.roster.collectAsStateWithLifecycle()
+    val lastVoice by MeshBus.lastVoice.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
@@ -89,8 +90,18 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
                 }
             }
         }
+        lastVoice?.let { lv ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(lv, style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = { MeshBus.replayHandler?.invoke() }) { Text("Replay") }
+            }
+        }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
             horizontalArrangement = Arrangement.Center
         ) {
             PttButton(onPtt = { pressed -> MeshBus.pttHandler?.invoke(pressed) })
@@ -113,7 +124,10 @@ fun PeerRow(peer: PeerView, myHeadingDeg: Float) {
                 text = "${Display.formatDistance(peer.distanceMeters)} ${Display.compassLabel(peer.bearingDeg)}",
                 style = MaterialTheme.typography.titleMedium
             )
-            Text(peer.name, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                if (peer.freshness == Freshness.STALE) "${peer.name} - offline (last position)" else peer.name,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
         FreshnessDot(peer.freshness)
     }
@@ -128,8 +142,9 @@ fun RosterRow(entry: PeerRosterEntry) {
         Column(modifier = Modifier.weight(1f)) {
             Text(entry.name, style = MaterialTheme.typography.titleMedium)
             val proximity = if (entry.hops == 0) "direct (near)" else "${entry.hops} hops (~${entry.hops * 75} m)"
+            val offline = if (entry.freshness == Freshness.STALE) "offline - " else ""
             Text(
-                "$proximity - ID ${entry.id}",
+                "$offline$proximity - ID ${entry.id}",
                 style = MaterialTheme.typography.bodySmall
             )
         }
