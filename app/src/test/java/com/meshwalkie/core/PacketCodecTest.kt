@@ -65,6 +65,17 @@ class PacketCodecTest {
     }
 
     @Test
+    fun presenceDedupKeyRoundTrip() {
+        val p = Packet.Presence(
+            originId = "bb3344", seqNum = 99, ttl = 3, timestampMs = 1765432100000L,
+            name = "Alice", batteryPct = 255
+        )
+        val decoded = PacketCodec.decode(PacketCodec.encode(p)) as Packet.Presence
+        assertEquals(p, decoded)
+        assertEquals(p.dedupKey, decoded.dedupKey)
+    }
+
+    @Test
     fun garbageThrows() {
         assertThrows(IllegalArgumentException::class.java) {
             PacketCodec.decode(byteArrayOf(99, 0, 0))

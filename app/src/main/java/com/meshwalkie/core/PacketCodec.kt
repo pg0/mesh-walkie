@@ -46,7 +46,7 @@ object PacketCodec {
             val originLen = buf.get().toInt() and 0xFF
             val originId = String(ByteArray(originLen).also { buf.get(it) }, Charsets.UTF_8)
             val seqNum = buf.getInt()
-            val ttl = buf.get().toInt()
+            val ttl = buf.get().toInt() and 0xFF
             val ts = buf.getLong()
             return when (type) {
                 TYPE_POSITION -> Packet.Position(
@@ -64,7 +64,7 @@ object PacketCodec {
                 TYPE_PRESENCE -> {
                     val nameLen = buf.get().toInt() and 0xFF
                     val name = String(ByteArray(nameLen).also { buf.get(it) }, Charsets.UTF_8)
-                    Packet.Presence(originId, seqNum, ttl, ts, name, buf.get().toInt())
+                    Packet.Presence(originId, seqNum, ttl, ts, name, buf.get().toInt() and 0xFF)
                 }
                 else -> throw IllegalArgumentException("unknown packet type $type")
             }
