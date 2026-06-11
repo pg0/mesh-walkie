@@ -149,10 +149,15 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
         }
         val bytes = ByteBuffer.allocate(pcm.size * 2).order(ByteOrder.LITTLE_ENDIAN)
         pcm.forEach { bytes.putShort(it) }
+        // Earpiece routing (phone at ear) needs a voice-communication stream so the
+        // AudioManager's communication-device choice takes effect; otherwise media
+        // out the loudspeaker as usual.
+        val usage = if (AudioRoute.earpiece) AudioAttributes.USAGE_VOICE_COMMUNICATION
+        else AudioAttributes.USAGE_MEDIA
         val track = AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setUsage(usage)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
             )

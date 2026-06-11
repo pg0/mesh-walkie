@@ -30,6 +30,7 @@ object Settings {
     private const val KEY_TEXT_SOUND = "text_sound"
     private const val KEY_VOICE_BITRATE = "voice_bitrate"
     const val DEFAULT_VOICE_BITRATE = 23_850
+    private const val KEY_EARPIECE_PROX = "earpiece_proximity"
 
     private lateinit var appContext: Context
 
@@ -100,6 +101,10 @@ object Settings {
     private val _voiceBitrate = MutableStateFlow(DEFAULT_VOICE_BITRATE)
     val voiceBitrate: StateFlow<Int> = _voiceBitrate
 
+    /** Hold phone to ear -> route voice to earpiece (loud places). Proximity-driven. */
+    private val _earpieceProximity = MutableStateFlow(true)
+    val earpieceProximity: StateFlow<Boolean> = _earpieceProximity
+
     /** Stable device id (read-only), shown in settings. */
     var deviceId: String = ""
         private set
@@ -128,12 +133,19 @@ object Settings {
         _nightMode.value = prefs.getBoolean(KEY_NIGHT, false)
         _textSound.value = prefs.getBoolean(KEY_TEXT_SOUND, true)
         _voiceBitrate.value = prefs.getInt(KEY_VOICE_BITRATE, DEFAULT_VOICE_BITRATE)
+        _earpieceProximity.value = prefs.getBoolean(KEY_EARPIECE_PROX, true)
     }
 
     fun setVoiceBitrate(rate: Int) {
         _voiceBitrate.value = rate
         appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putInt(KEY_VOICE_BITRATE, rate).apply()
+    }
+
+    fun setEarpieceProximity(on: Boolean) {
+        _earpieceProximity.value = on
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_EARPIECE_PROX, on).apply()
     }
 
     fun setTextSound(on: Boolean) {

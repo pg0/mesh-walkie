@@ -52,6 +52,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     val nightMode by Settings.nightMode.collectAsStateWithLifecycle()
     val textSound by Settings.textSound.collectAsStateWithLifecycle()
     val voiceBitrate by Settings.voiceBitrate.collectAsStateWithLifecycle()
+    val earpieceProx by Settings.earpieceProximity.collectAsStateWithLifecycle()
     val myHostIp by MeshBus.myHostIp.collectAsStateWithLifecycle()
     val savedName by Settings.displayName.collectAsStateWithLifecycle()
     val savedGroup by Settings.groupCode.collectAsStateWithLifecycle()
@@ -251,6 +252,17 @@ fun SettingsScreen(onBack: () -> Unit) {
         ) {
             Text("Bluetooth headset mic", style = MaterialTheme.typography.labelLarge)
             Switch(checked = btHeadsetOn, onCheckedChange = { Settings.setBtHeadset(it) })
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Hold to ear -> earpiece (loud places)", style = MaterialTheme.typography.labelLarge)
+            Switch(checked = earpieceProx, onCheckedChange = { Settings.setEarpieceProximity(it) })
         }
 
         Spacer(Modifier.height(20.dp))

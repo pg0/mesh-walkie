@@ -7,12 +7,17 @@ import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.IBinder
 import com.meshwalkie.util.L
+import com.meshwalkie.audio.AudioRoute
 import com.meshwalkie.audio.PttRecorder
 import com.meshwalkie.audio.VadRecorder
 import com.meshwalkie.audio.VoicePlayer
@@ -71,6 +76,15 @@ class MeshService : Service() {
     private val liveRecorder = LiveRecorder()
     private var liveJob: Job? = null
     private val liveBroadcasting = AtomicBoolean(false)
+    private var sensorManager: SensorManager? = null
+    private var proximitySensor: Sensor? = null
+    private val proximityListener = object : SensorEventListener {
+        override fun onSensorChanged(e: SensorEvent) {
+            val max = proximitySensor?.maximumRange ?: 5f
+            applyProximity(near = e.values[0] < max && e.values[0] < 5f)
+        }
+        override fun onAccuracyChanged(s: Sensor?, a: Int) {}
+    }
 
     @Volatile private var myLat = 0.0
     @Volatile private var myLon = 0.0
@@ -163,6 +177,16 @@ class MeshService : Service() {
         headingSource.start { deg ->
             myHeading = deg
             MeshBus.publishHeading(deg)
+        }
+
+        // Proximity -> earpiece routing (phone at ear in loud places).
+        sensorManager = (getSystemService(SENSOR_SERVICE) as SensorManager).also { sm ->
+            proximitySensor = sm.getDefaultSensor(Sensor.TYPE_PROXIMITY)
+            proximitySensor?.let { sm.registerListener(proximityListener, it, SensorManager.SENSOR_DELAY_NORMAL) }
+        }
+        // When the toggle is switched off, drop any earpiece routing immediately.
+        scope.launch {
+            Settings.earpieceProximity.collect { on -> if (!on) routeEarpiece(false) }
         }
 
         // Voice-activated transmit: (re)start the VAD loop when enabled or when
@@ -339,6 +363,47 @@ class MeshService : Service() {
         if (Settings.btHeadset.value && Build.VERSION.SDK_INT >= 31)
             MediaRecorder.AudioSource.VOICE_COMMUNICATION
         else MediaRecorder.AudioSource.MIC
+
+    /** Proximity event -> decide earpiece routing, respecting the toggle and BT. */
+    private fun applyProximity(near: Boolean) {
+        if (!Settings.earpieceProximity.value) { routeEarpiece(false); return }
+        if (Settings.btHeadset.value) return   // BT headset owns audio routing
+        routeEarpiece(near)
+    }
+
+    /**
+     * Route voice playback to the earpiece (near) or back to the loudspeaker (far).
+     * Earpiece needs MODE_IN_COMMUNICATION + the earpiece as communication device;
+     * the players build their tracks as voice-communication streams so this applies.
+     */
+    private fun routeEarpiece(on: Boolean) {
+        if (AudioRoute.earpiece == on) return
+        AudioRoute.earpiece = on
+        val am = getSystemService(AUDIO_SERVICE) as AudioManager
+        try {
+            if (Build.VERSION.SDK_INT >= 31) {
+                if (on) {
+                    am.mode = AudioManager.MODE_IN_COMMUNICATION
+                    am.availableCommunicationDevices
+                        .firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_EARPIECE }
+                        ?.let { am.setCommunicationDevice(it) }
+                } else {
+                    am.clearCommunicationDevice()
+                    am.mode = AudioManager.MODE_NORMAL
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                if (on) {
+                    am.mode = AudioManager.MODE_IN_COMMUNICATION
+                    am.isSpeakerphoneOn = false
+                } else {
+                    am.isSpeakerphoneOn = true
+                    am.mode = AudioManager.MODE_NORMAL
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
 
     private fun applyHeadsetRouting(on: Boolean) {
         if (Build.VERSION.SDK_INT < 31) return
@@ -590,6 +655,8 @@ class MeshService : Service() {
         stopHost()
         disconnectClient()
         applyHeadsetRouting(false)
+        routeEarpiece(false)
+        sensorManager?.unregisterListener(proximityListener)
         locationSource.stop()
         headingSource.stop()
         transport.stop()

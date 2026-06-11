@@ -16,6 +16,7 @@ import java.nio.ByteOrder
 class StreamPlayer {
 
     private var track: AudioTrack? = null
+    private var trackEarpiece = false        // routing the open track was built for
     @Volatile private var lastWriteMs = 0L
     @Volatile private var watchdog: Thread? = null
     @Volatile var muted = false
@@ -23,7 +24,8 @@ class StreamPlayer {
     @Synchronized
     fun write(pcm: ShortArray) {
         if (pcm.isEmpty() || muted) return
-        val t = track ?: open().also { track = it }
+        if (track != null && trackEarpiece != AudioRoute.earpiece) close()  // route changed -> rebuild
+        val t = track ?: open().also { track = it; trackEarpiece = AudioRoute.earpiece }
         val bytes = ByteBuffer.allocate(pcm.size * 2).order(ByteOrder.LITTLE_ENDIAN)
         pcm.forEach { bytes.putShort(it) }
         t.write(bytes.array(), 0, bytes.capacity(), AudioTrack.WRITE_BLOCKING)
@@ -34,10 +36,12 @@ class StreamPlayer {
         val minBuf = AudioTrack.getMinBufferSize(
             OpusCodec.SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT
         )
+        val usage = if (AudioRoute.earpiece) AudioAttributes.USAGE_VOICE_COMMUNICATION
+        else AudioAttributes.USAGE_MEDIA
         val t = AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setUsage(usage)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
             )
