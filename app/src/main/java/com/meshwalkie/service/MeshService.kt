@@ -123,6 +123,7 @@ class MeshService : Service() {
 
         MeshBus.pttHandler = { pressed -> onPtt(pressed) }
         MeshBus.replayHandler = { voicePlayer.replayLast() }
+        MeshBus.sendTextHandler = { text -> sendText(text) }
         voicePlayer.onClipPlayed = { senderId ->
             val name = registry.nameOf(senderId) ?: senderId
             MeshBus.publishLastVoice("Last message from $name")
@@ -135,7 +136,7 @@ class MeshService : Service() {
                     Packet.Presence(
                         originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
                         System.currentTimeMillis(),
-                        name = Settings.displayName.value, batteryPct = 100
+                        name = Settings.displayName.value, batteryPct = batteryPct()
                     )
                 )
                 publishPeers()
@@ -156,6 +157,7 @@ class MeshService : Service() {
             router.noteMeshSeen(packet.originId, now)   // heard on mesh -> mesh route
             registry.onPacket(packet, receivedAtMs = now)
             if (packet is Packet.Voice) voicePlayer.onVoicePacket(packet)
+            if (packet is Packet.Text) MeshBus.publishText("${packet.senderName}: ${packet.text}")
             publishPeers()
         }
 
@@ -173,6 +175,24 @@ class MeshService : Service() {
         MeshBus.publishStatus("Switching group…")
         transport.stop()
         bindTransport(group)
+    }
+
+    private fun sendText(text: String) {
+        val clean = text.trim()
+        if (clean.isEmpty()) return
+        engine.send(
+            Packet.Text(
+                originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
+                System.currentTimeMillis(), Settings.displayName.value, clean
+            )
+        )
+        MeshBus.publishText("You: $clean")
+    }
+
+    private fun batteryPct(): Int {
+        val bm = getSystemService(BATTERY_SERVICE) as android.os.BatteryManager
+        return bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            .coerceIn(0, 100)
     }
 
     private fun onPtt(pressed: Boolean) {
@@ -217,6 +237,7 @@ class MeshService : Service() {
     override fun onDestroy() {
         MeshBus.pttHandler = null
         MeshBus.replayHandler = null
+        MeshBus.sendTextHandler = null
         voicePlayer.onClipPlayed = null
         pttHeld.set(false)
         locationSource.stop()

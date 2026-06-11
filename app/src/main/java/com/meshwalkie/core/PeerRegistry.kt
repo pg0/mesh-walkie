@@ -9,7 +9,8 @@ data class PeerView(
     val name: String,
     val distanceMeters: Double,
     val bearingDeg: Double,
-    val freshness: Freshness
+    val freshness: Freshness,
+    val batteryPct: Int = -1
 )
 
 /**
@@ -22,7 +23,8 @@ data class PeerRosterEntry(
     val freshness: Freshness,
     val hasPosition: Boolean,
     /** 0 = direct neighbour, N = reached via N relays. Coarse GPS-free proximity. */
-    val hops: Int
+    val hops: Int,
+    val batteryPct: Int = -1
 )
 
 /**
@@ -36,7 +38,8 @@ class PeerRegistry {
         var lon: Double? = null,
         var positionTimestampMs: Long = 0L,
         var lastSeenMs: Long = 0L,
-        var hops: Int = 0
+        var hops: Int = 0,
+        var batteryPct: Int = -1     // -1 = unknown
     )
 
     private val peers = LinkedHashMap<String, PeerState>()
@@ -62,8 +65,11 @@ class PeerRegistry {
                 state.lon = packet.lon
                 state.positionTimestampMs = packet.timestampMs
             }
-            is Packet.Presence -> state.name = packet.name
-            is Packet.Voice -> Unit // lastSeen already refreshed
+            is Packet.Presence -> {
+                state.name = packet.name
+                state.batteryPct = packet.batteryPct
+            }
+            else -> Unit // Voice/Text/Waypoint/Ack: lastSeen already refreshed; handled elsewhere
         }
     }
 
@@ -79,7 +85,8 @@ class PeerRegistry {
                 name = s.name ?: id,
                 distanceMeters = GeoMath.distanceMeters(myLat, myLon, lat, lon),
                 bearingDeg = GeoMath.bearingDegrees(myLat, myLon, lat, lon),
-                freshness = freshnessOf(age)
+                freshness = freshnessOf(age),
+                batteryPct = s.batteryPct
             )
         }.sortedBy { it.distanceMeters }
 
@@ -95,7 +102,8 @@ class PeerRegistry {
                 name = s.name ?: id,
                 freshness = freshnessOf(nowMs - s.lastSeenMs),
                 hasPosition = s.lat != null && s.lon != null,
-                hops = s.hops
+                hops = s.hops,
+                batteryPct = s.batteryPct
             )
         }.sortedWith(compareBy({ it.hops }, { it.name }))
 

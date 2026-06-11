@@ -34,9 +34,11 @@ fun SettingsScreen(onBack: () -> Unit) {
     val dark by Settings.darkMode.collectAsStateWithLifecycle()
     val savedName by Settings.displayName.collectAsStateWithLifecycle()
     val savedGroup by Settings.groupCode.collectAsStateWithLifecycle()
+    val savedQuickTexts by Settings.quickTexts.collectAsStateWithLifecycle()
 
     var nameField by remember { mutableStateOf(savedName) }
     var groupField by remember { mutableStateOf(savedGroup) }
+    var quickTextsField by remember { mutableStateOf(savedQuickTexts.joinToString("\n")) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
@@ -79,6 +81,16 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(20.dp))
 
+        Text("Quick texts (one per line, max 8)", style = MaterialTheme.typography.labelLarge)
+        OutlinedTextField(
+            value = quickTextsField,
+            onValueChange = { quickTextsField = it },
+            singleLine = false,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(20.dp))
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -93,6 +105,7 @@ fun SettingsScreen(onBack: () -> Unit) {
         Button(
             onClick = {
                 Settings.setDisplayName(nameField)
+                Settings.setQuickTexts(quickTextsField.split("\n"))
                 // setGroupCode returns true when it changed; the service observes
                 // the flow and rejoins the new mesh automatically.
                 Settings.setGroupCode(groupField)

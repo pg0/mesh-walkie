@@ -42,6 +42,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
     val linkCount by MeshBus.linkCount.collectAsStateWithLifecycle()
     val roster by MeshBus.roster.collectAsStateWithLifecycle()
     val lastVoice by MeshBus.lastVoice.collectAsStateWithLifecycle()
+    val lastText by MeshBus.lastText.collectAsStateWithLifecycle()
     var showRadar by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -104,20 +105,25 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
                 }
             }
         }
+        lastText?.let { lt ->
+            Text("💬 $lt", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
+        }
         lastVoice?.let { lv ->
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(lv, style = MaterialTheme.typography.bodyMedium)
+                Text("🔊 $lv", style = MaterialTheme.typography.bodyMedium)
                 TextButton(onClick = { MeshBus.replayHandler?.invoke() }) { Text("Replay") }
             }
         }
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.Center
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
+            QuickTextWheel(onSend = { MeshBus.sendTextHandler?.invoke(it) })
             PttButton(onPtt = { pressed -> MeshBus.pttHandler?.invoke(pressed) })
         }
     }
@@ -138,10 +144,9 @@ fun PeerRow(peer: PeerView, myHeadingDeg: Float) {
                 text = "${Display.formatDistance(peer.distanceMeters)} ${Display.compassLabel(peer.bearingDeg)}",
                 style = MaterialTheme.typography.titleMedium
             )
-            Text(
-                if (peer.freshness == Freshness.STALE) "${peer.name} - offline (last position)" else peer.name,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            val nameLine = if (peer.freshness == Freshness.STALE) "${peer.name} - offline (last position)" else peer.name
+            val batt = if (peer.batteryPct in 0..100) "  🔋${peer.batteryPct}%" else ""
+            Text(nameLine + batt, style = MaterialTheme.typography.bodyMedium)
         }
         FreshnessDot(peer.freshness)
     }
@@ -157,8 +162,9 @@ fun RosterRow(entry: PeerRosterEntry) {
             Text(entry.name, style = MaterialTheme.typography.titleMedium)
             val proximity = if (entry.hops == 0) "direct (near)" else "${entry.hops} hops (~${entry.hops * 75} m)"
             val offline = if (entry.freshness == Freshness.STALE) "offline - " else ""
+            val batt = if (entry.batteryPct in 0..100) " - 🔋${entry.batteryPct}%" else ""
             Text(
-                "$offline$proximity - ID ${entry.id}",
+                "$offline$proximity - ID ${entry.id}$batt",
                 style = MaterialTheme.typography.bodySmall
             )
         }

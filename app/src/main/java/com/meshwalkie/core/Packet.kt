@@ -63,6 +63,47 @@ sealed class Packet {
         override fun withTtl(newTtl: Int) = copy(ttl = newTtl)
     }
 
+    /** Quick-text / short chat message flooded to the channel. */
+    data class Text(
+        override val originId: String,
+        override val seqNum: Int,
+        override val ttl: Int,
+        override val timestampMs: Long,
+        val senderName: String,
+        val text: String
+    ) : Packet() {
+        override val dedupKey get() = "$originId:$seqNum"
+        override fun withTtl(newTtl: Int) = copy(ttl = newTtl)
+    }
+
+    /** A named, fixed point dropped by someone (rally point, "car here"). */
+    data class Waypoint(
+        override val originId: String,
+        override val seqNum: Int,
+        override val ttl: Int,
+        override val timestampMs: Long,
+        val senderName: String,
+        val lat: Double,
+        val lon: Double,
+        val label: String
+    ) : Packet() {
+        override val dedupKey get() = "$originId:$seqNum"
+        override fun withTtl(newTtl: Int) = copy(ttl = newTtl)
+    }
+
+    /** Delivery receipt: [originId] heard the clip (refOriginId, refClipId). */
+    data class Ack(
+        override val originId: String,
+        override val seqNum: Int,
+        override val ttl: Int,
+        override val timestampMs: Long,
+        val refOriginId: String,
+        val refClipId: Int
+    ) : Packet() {
+        override val dedupKey get() = "$originId:$seqNum"
+        override fun withTtl(newTtl: Int) = copy(ttl = newTtl)
+    }
+
     companion object {
         const val DEFAULT_TTL = 4
     }

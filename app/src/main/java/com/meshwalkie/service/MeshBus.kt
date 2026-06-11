@@ -36,10 +36,17 @@ object MeshBus {
     private val _lastVoice = MutableStateFlow<String?>(null)
     val lastVoice: StateFlow<String?> = _lastVoice
 
+    /** Last quick-text seen (sent or received), e.g. "Alice: OK". */
+    private val _lastText = MutableStateFlow<String?>(null)
+    val lastText: StateFlow<String?> = _lastText
+
     @Volatile var pttHandler: ((pressed: Boolean) -> Unit)? = null
 
     /** Set by the service; UI calls it to replay the last received clip. */
     @Volatile var replayHandler: (() -> Unit)? = null
+
+    /** Set by the service; UI calls it to send a quick-text. */
+    @Volatile var sendTextHandler: ((String) -> Unit)? = null
 
     fun publishPeers(views: List<PeerView>) { _peers.value = views }
     fun publishRoster(entries: List<PeerRosterEntry>) { _roster.value = entries }
@@ -48,4 +55,5 @@ object MeshBus {
     fun publishLinkCount(n: Int) { _linkCount.value = n }
     fun publishStatus(text: String) { _status.value = text }
     fun publishLastVoice(text: String) { _lastVoice.value = text }
+    fun publishText(text: String) { _lastText.value = text }
 }

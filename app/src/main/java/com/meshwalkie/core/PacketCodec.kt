@@ -7,6 +7,9 @@ object PacketCodec {
     private const val TYPE_POSITION: Byte = 1
     private const val TYPE_VOICE: Byte = 2
     private const val TYPE_PRESENCE: Byte = 3
+    private const val TYPE_WAYPOINT: Byte = 4
+    private const val TYPE_TEXT: Byte = 5
+    private const val TYPE_ACK: Byte = 6
 
     fun encode(p: Packet): ByteArray {
         val originBytes = p.originId.toByteArray(Charsets.UTF_8)
@@ -33,6 +36,38 @@ object PacketCodec {
                     it.put(TYPE_PRESENCE); putHeader(it, p, originBytes)
                     it.put(nameBytes.size.toByte()); it.put(nameBytes)
                     it.put(p.batteryPct.toByte())
+                }
+            }
+            is Packet.Text -> {
+                val nameBytes = p.senderName.toByteArray(Charsets.UTF_8)
+                val textBytes = p.text.toByteArray(Charsets.UTF_8)
+                require(nameBytes.size <= 255) { "name too long" }
+                require(textBytes.size <= 65535) { "text too long" }
+                ByteBuffer.allocate(header + 1 + nameBytes.size + 2 + textBytes.size).also {
+                    it.put(TYPE_TEXT); putHeader(it, p, originBytes)
+                    it.put(nameBytes.size.toByte()); it.put(nameBytes)
+                    it.putShort(textBytes.size.toShort()); it.put(textBytes)
+                }
+            }
+            is Packet.Waypoint -> {
+                val nameBytes = p.senderName.toByteArray(Charsets.UTF_8)
+                val labelBytes = p.label.toByteArray(Charsets.UTF_8)
+                require(nameBytes.size <= 255) { "name too long" }
+                require(labelBytes.size <= 255) { "label too long" }
+                ByteBuffer.allocate(header + 1 + nameBytes.size + 8 + 8 + 1 + labelBytes.size).also {
+                    it.put(TYPE_WAYPOINT); putHeader(it, p, originBytes)
+                    it.put(nameBytes.size.toByte()); it.put(nameBytes)
+                    it.putDouble(p.lat); it.putDouble(p.lon)
+                    it.put(labelBytes.size.toByte()); it.put(labelBytes)
+                }
+            }
+            is Packet.Ack -> {
+                val refBytes = p.refOriginId.toByteArray(Charsets.UTF_8)
+                require(refBytes.size <= 255) { "refOriginId too long" }
+                ByteBuffer.allocate(header + 1 + refBytes.size + 4).also {
+                    it.put(TYPE_ACK); putHeader(it, p, originBytes)
+                    it.put(refBytes.size.toByte()); it.put(refBytes)
+                    it.putInt(p.refClipId)
                 }
             }
         }
@@ -65,6 +100,26 @@ object PacketCodec {
                     val nameLen = buf.get().toInt() and 0xFF
                     val name = String(ByteArray(nameLen).also { buf.get(it) }, Charsets.UTF_8)
                     Packet.Presence(originId, seqNum, ttl, ts, name, buf.get().toInt() and 0xFF)
+                }
+                TYPE_TEXT -> {
+                    val nameLen = buf.get().toInt() and 0xFF
+                    val name = String(ByteArray(nameLen).also { buf.get(it) }, Charsets.UTF_8)
+                    val textLen = buf.getShort().toInt() and 0xFFFF
+                    val text = String(ByteArray(textLen).also { buf.get(it) }, Charsets.UTF_8)
+                    Packet.Text(originId, seqNum, ttl, ts, name, text)
+                }
+                TYPE_WAYPOINT -> {
+                    val nameLen = buf.get().toInt() and 0xFF
+                    val name = String(ByteArray(nameLen).also { buf.get(it) }, Charsets.UTF_8)
+                    val lat = buf.getDouble(); val lon = buf.getDouble()
+                    val labelLen = buf.get().toInt() and 0xFF
+                    val label = String(ByteArray(labelLen).also { buf.get(it) }, Charsets.UTF_8)
+                    Packet.Waypoint(originId, seqNum, ttl, ts, name, lat, lon, label)
+                }
+                TYPE_ACK -> {
+                    val refLen = buf.get().toInt() and 0xFF
+                    val refOrigin = String(ByteArray(refLen).also { buf.get(it) }, Charsets.UTF_8)
+                    Packet.Ack(originId, seqNum, ttl, ts, refOrigin, buf.getInt())
                 }
                 else -> throw IllegalArgumentException("unknown packet type $type")
             }

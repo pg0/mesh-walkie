@@ -15,6 +15,8 @@ object Settings {
     private const val KEY_DARK = "dark_mode"
     private const val KEY_GROUP = "group_code"
     const val DEFAULT_GROUP = "channel-1"
+    private const val KEY_QUICKTEXTS = "quick_texts"
+    private val DEFAULT_QUICKTEXTS = listOf("OK", "Wait", "Help!", "On my way", "Turning back", "Regroup")
 
     private lateinit var appContext: Context
 
@@ -33,6 +35,10 @@ object Settings {
     private val _groupCode = MutableStateFlow(DEFAULT_GROUP)
     val groupCode: StateFlow<String> = _groupCode
 
+    /** Preset quick-texts shown on the radial wheel. */
+    private val _quickTexts = MutableStateFlow(DEFAULT_QUICKTEXTS)
+    val quickTexts: StateFlow<List<String>> = _quickTexts
+
     /** Stable device id (read-only), shown in settings. */
     var deviceId: String = ""
         private set
@@ -46,6 +52,18 @@ object Settings {
         _displayName.value = prefs.getString(KEY_NAME, null) ?: DeviceId.displayName(appContext)
         _darkMode.value = prefs.getBoolean(KEY_DARK, true)
         _groupCode.value = prefs.getString(KEY_GROUP, DEFAULT_GROUP) ?: DEFAULT_GROUP
+        val saved = prefs.getString(KEY_QUICKTEXTS, null)
+        _quickTexts.value = saved?.split("\n")?.map { it.trim() }?.filter { it.isNotEmpty() }
+            ?.ifEmpty { DEFAULT_QUICKTEXTS } ?: DEFAULT_QUICKTEXTS
+    }
+
+    /** Save preset quick-texts (max 8, non-empty). */
+    fun setQuickTexts(texts: List<String>) {
+        val clean = texts.map { it.trim() }.filter { it.isNotEmpty() }.take(8)
+            .ifEmpty { DEFAULT_QUICKTEXTS }
+        _quickTexts.value = clean
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(KEY_QUICKTEXTS, clean.joinToString("\n")).apply()
     }
 
     /**
