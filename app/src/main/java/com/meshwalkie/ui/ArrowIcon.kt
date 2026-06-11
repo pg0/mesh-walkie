@@ -16,11 +16,16 @@ import androidx.compose.ui.unit.dp
  * meaningless so we draw a solid dot instead of an arrow.
  */
 @Composable
-fun ArrowIcon(rotationDeg: Float, modifier: Modifier = Modifier, ball: Boolean = false) {
+fun ArrowIcon(
+    rotationDeg: Float,
+    modifier: Modifier = Modifier,
+    ball: Boolean = false,
+    color: Color = Color(0xFF1565C0)
+) {
     Canvas(modifier = modifier.size(40.dp)) {
         if (ball) {
             drawCircle(
-                color = Color(0xFF1565C0),
+                color = color,
                 radius = size.minDimension * 0.32f,
                 center = Offset(size.width * 0.5f, size.height * 0.5f)
             )
@@ -36,9 +41,9 @@ fun ArrowIcon(rotationDeg: Float, modifier: Modifier = Modifier, ball: Boolean =
                 lineTo(w * 0.18f, h * 0.85f)  // left tail
                 close()
             }
-            drawPath(path, color = Color(0xFF1565C0))
+            drawPath(path, color = color)
             drawCircle(
-                color = Color(0x331565C0),
+                color = color.copy(alpha = 0.20f),
                 radius = w * 0.5f,
                 center = Offset(w * 0.5f, h * 0.5f)
             )

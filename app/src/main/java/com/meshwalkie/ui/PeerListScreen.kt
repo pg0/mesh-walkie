@@ -292,7 +292,8 @@ fun TargetRow(
     ) {
         ArrowIcon(
             rotationDeg = Display.arrowRotation(bearing, myHeadingDeg.toDouble()),
-            ball = dist < 5.0
+            ball = dist < 5.0,
+            color = Color(0xFF2E7D32)   // green = navigation target
         )
         Spacer(modifier = Modifier.size(16.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -316,7 +317,8 @@ fun WaypointRow(wp: WaypointView, myHeadingDeg: Float, onDelete: () -> Unit) {
     ) {
         ArrowIcon(
             rotationDeg = Display.arrowRotation(wp.bearingDeg, myHeadingDeg.toDouble()),
-            ball = wp.distanceMeters < 5.0
+            ball = wp.distanceMeters < 5.0,
+            color = Color(0xFFFFB300)   // amber = waypoint
         )
         Spacer(modifier = Modifier.size(16.dp))
         Column(modifier = Modifier.weight(1f)) {
