@@ -203,17 +203,19 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                 }) { Text("Guide back") }
             }
         }
-        Row(
+        Box(
             modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly
+            contentAlignment = Alignment.Center
         ) {
             if (!vadOn) {
                 PttButton(onPtt = { pressed -> MeshBus.pttHandler?.invoke(pressed) })
             } else {
                 Text("Auto-talk active", style = MaterialTheme.typography.titleMedium)
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                modifier = Modifier.align(Alignment.CenterEnd),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text("Auto-talk", style = MaterialTheme.typography.labelMedium)
                 Switch(checked = vadOn, onCheckedChange = { Settings.setVadEnabled(it) })
             }
