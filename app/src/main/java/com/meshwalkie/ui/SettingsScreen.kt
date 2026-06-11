@@ -258,9 +258,9 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(20.dp))
 
-        Text("Fallback via internet", style = MaterialTheme.typography.labelLarge)
+        Text("Fallback via WiFi", style = MaterialTheme.typography.labelLarge)
         Text(
-            "Extends range beyond the BLE mesh. Host here; others join from the Server menu on the main screen (your IPv6 is shared on the mesh, or enter it manually).",
+            "Extends range beyond the BLE mesh over a shared WiFi/hotspot. Host here; others join from the Server menu on the main screen (your IP is shared on the mesh, or enter it manually).",
             style = MaterialTheme.typography.bodySmall
         )
         Row(
