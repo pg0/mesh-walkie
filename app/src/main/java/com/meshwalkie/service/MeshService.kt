@@ -55,6 +55,7 @@ class MeshService : Service() {
     @Volatile private var myHeading = 0f
     @Volatile private var hasFix = false
 
+    @Volatile private var currentGroup = ""
     private val started = AtomicBoolean(false)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -90,19 +91,16 @@ class MeshService : Service() {
         // so the transport/location/heading/heartbeat are wired at most once per
         // service instance (a second wiring would leak the first).
         if (!started.compareAndSet(false, true)) return
+        Settings.init(this)
         originId = DeviceId.get(this)
-        transport = NearbyTransport(this, roomCode = "field1", deviceName = DeviceId.displayName(this))
-        engine = MeshEngine(transport)
-        voiceSender = VoiceSender(engine, originId, nextSeq = { seq.incrementAndGet() })
+        bindTransport(Settings.groupCode.value)
 
-        engine.start { packet ->
-            val now = System.currentTimeMillis()
-            router.noteMeshSeen(packet.originId, now)   // heard on mesh -> mesh route
-            registry.onPacket(packet, receivedAtMs = now)
-            if (packet is Packet.Voice) voicePlayer.onVoicePacket(packet)
-            publishPeers()
+        // Rejoin a new mesh group when the user changes the code in settings.
+        scope.launch {
+            Settings.groupCode.collect { code ->
+                if (::transport.isInitialized && code != currentGroup) rejoin(code)
+            }
         }
-        transport.start()
 
         locationSource.start { fix ->
             myLat = fix.latitude
@@ -132,13 +130,44 @@ class MeshService : Service() {
                     Packet.Presence(
                         originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
                         System.currentTimeMillis(),
-                        name = DeviceId.displayName(this@MeshService), batteryPct = 100
+                        name = Settings.displayName.value, batteryPct = 100
                     )
                 )
                 publishPeers()
                 delay(10_000L)
             }
         }
+    }
+
+    /** Create + start a transport (and the engine bound to it) for [group]. */
+    private fun bindTransport(group: String) {
+        currentGroup = group
+        transport = NearbyTransport(this, roomCode = group, deviceName = Settings.displayName.value)
+        engine = MeshEngine(transport)
+        voiceSender = VoiceSender(engine, originId, nextSeq = { seq.incrementAndGet() })
+
+        engine.start { packet ->
+            val now = System.currentTimeMillis()
+            router.noteMeshSeen(packet.originId, now)   // heard on mesh -> mesh route
+            registry.onPacket(packet, receivedAtMs = now)
+            if (packet is Packet.Voice) voicePlayer.onVoicePacket(packet)
+            publishPeers()
+        }
+
+        transport.onLinksChanged = { n ->
+            MeshBus.publishLinkCount(n)
+            MeshBus.publishStatus(statusText(n))
+        }
+        MeshBus.publishLinkCount(0)
+        MeshBus.publishStatus(statusText(0))   // "Suche Geraete…" until first link
+        transport.start()
+    }
+
+    /** Leave the current group and join [group]: stop old radio, bind fresh. */
+    private fun rejoin(group: String) {
+        MeshBus.publishStatus("Wechsle Gruppe…")
+        transport.stop()
+        bindTransport(group)
     }
 
     private fun onPtt(pressed: Boolean) {
@@ -156,6 +185,12 @@ class MeshService : Service() {
     private fun publishPeers() {
         if (!hasFix) return
         MeshBus.publishPeers(registry.snapshot(myLat, myLon, System.currentTimeMillis()))
+    }
+
+    private fun statusText(links: Int): String = when (links) {
+        0 -> "Suche Geraete in Reichweite…"
+        1 -> "1 Geraet verbunden"
+        else -> "$links Geraete verbunden"
     }
 
     private fun buildNotification(): Notification {

@@ -10,7 +10,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshwalkie.service.MeshService
+import com.meshwalkie.service.Settings
 
 class MainActivity : ComponentActivity() {
 
@@ -33,7 +43,7 @@ class MainActivity : ComponentActivity() {
     private val requestPermissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
             if (grants.values.all { it }) {
-                // The result callback can fire before the activity is RESUMED;
+                // The result callback can fire before the activity is resumed;
                 // defer the FGS start instead of calling it here.
                 pendingStart = true
                 maybeStartMeshService()
@@ -43,7 +53,26 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { MaterialTheme { PeerListScreen() } }
+        Settings.init(this)
+        setContent {
+            val dark by Settings.darkMode.collectAsStateWithLifecycle()
+            // OLED-friendly true black in dark mode.
+            val colors = if (dark) {
+                darkColorScheme(background = Color.Black, surface = Color.Black)
+            } else {
+                lightColorScheme()
+            }
+            MaterialTheme(colorScheme = colors) {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    var showSettings by rememberSaveable { mutableStateOf(false) }
+                    if (showSettings) {
+                        SettingsScreen(onBack = { showSettings = false })
+                    } else {
+                        PeerListScreen(onOpenSettings = { showSettings = true })
+                    }
+                }
+            }
+        }
         ensurePermissionsThenStart()
     }
 

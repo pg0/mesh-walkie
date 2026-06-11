@@ -35,6 +35,9 @@ class NearbyTransport(
     private val connected = CopyOnWriteArraySet<String>()
     @Volatile private var handler: ((ByteArray) -> Unit)? = null
 
+    /** Fired with the current connected-link count whenever it changes. */
+    @Volatile var onLinksChanged: ((Int) -> Unit)? = null
+
     private val payloadCallback = object : PayloadCallback() {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
             if (payload.type == Payload.Type.BYTES) {
@@ -56,11 +59,13 @@ class NearbyTransport(
             if (result.status.isSuccess) {
                 connected += endpointId
                 Log.i(TAG, "connected to $endpointId (${connected.size} links)")
+                onLinksChanged?.invoke(connected.size)
             }
         }
         override fun onDisconnected(endpointId: String) {
             connected -= endpointId
             Log.i(TAG, "disconnected from $endpointId")
+            onLinksChanged?.invoke(connected.size)
         }
     }
 

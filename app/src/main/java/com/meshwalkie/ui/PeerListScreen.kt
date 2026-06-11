@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -28,15 +29,34 @@ import com.meshwalkie.core.PeerView
 import com.meshwalkie.service.MeshBus
 
 @Composable
-fun PeerListScreen() {
+fun PeerListScreen(onOpenSettings: () -> Unit) {
     val peers by MeshBus.peers.collectAsStateWithLifecycle()
     val heading by MeshBus.myHeading.collectAsStateWithLifecycle()
     val waitingForGps by MeshBus.waitingForGps.collectAsStateWithLifecycle()
 
+    val status by MeshBus.status.collectAsStateWithLifecycle()
+    val linkCount by MeshBus.linkCount.collectAsStateWithLifecycle()
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Mesh Walkie", style = MaterialTheme.typography.headlineSmall)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Mesh Walkie", style = MaterialTheme.typography.headlineSmall)
+            TextButton(onClick = onOpenSettings) { Text("Einstellungen") }
+        }
+        Text(status, style = MaterialTheme.typography.bodyMedium)
         if (waitingForGps) {
-            Text("Warte auf GPS-Fix", style = MaterialTheme.typography.bodyMedium)
+            Text("Warte auf GPS-Fix", style = MaterialTheme.typography.bodySmall)
+        }
+        if (peers.isEmpty()) {
+            Text(
+                if (linkCount == 0) "Kein anderes Geraet in Reichweite."
+                else "Verbunden, warte auf Position der Peers…",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(peers, key = { it.id }) { peer ->

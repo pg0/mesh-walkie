@@ -19,9 +19,19 @@ object MeshBus {
     private val _waitingForGps = MutableStateFlow(true)
     val waitingForGps: StateFlow<Boolean> = _waitingForGps
 
+    /** Number of currently connected mesh links (Nearby endpoints). */
+    private val _linkCount = MutableStateFlow(0)
+    val linkCount: StateFlow<Int> = _linkCount
+
+    /** Human-readable mesh status, e.g. "Suche Geraete…" / "1 Geraet verbunden". */
+    private val _status = MutableStateFlow("Starte Mesh…")
+    val status: StateFlow<String> = _status
+
     @Volatile var pttHandler: ((pressed: Boolean) -> Unit)? = null
 
     fun publishPeers(views: List<PeerView>) { _peers.value = views }
     fun publishHeading(deg: Float) { _myHeading.value = deg }
     fun publishWaitingForGps(waiting: Boolean) { _waitingForGps.value = waiting }
+    fun publishLinkCount(n: Int) { _linkCount.value = n }
+    fun publishStatus(text: String) { _status.value = text }
 }
