@@ -19,6 +19,7 @@ object Settings {
     private val DEFAULT_QUICKTEXTS = listOf("OK", "Wait", "Help!", "On my way", "Turning back", "Regroup")
     private const val KEY_VAD = "vad_enabled"
     private const val KEY_VAD_SENS = "vad_sensitivity"
+    private const val KEY_BREADCRUMB = "breadcrumb"
 
     private lateinit var appContext: Context
 
@@ -49,6 +50,10 @@ object Settings {
     private val _vadSensitivity = MutableStateFlow(50)
     val vadSensitivity: StateFlow<Int> = _vadSensitivity
 
+    /** Record a breadcrumb trail of my own fixes, for retrace / guide-me-back. */
+    private val _breadcrumbEnabled = MutableStateFlow(false)
+    val breadcrumbEnabled: StateFlow<Boolean> = _breadcrumbEnabled
+
     /** Stable device id (read-only), shown in settings. */
     var deviceId: String = ""
         private set
@@ -67,6 +72,13 @@ object Settings {
             ?.ifEmpty { DEFAULT_QUICKTEXTS } ?: DEFAULT_QUICKTEXTS
         _vadEnabled.value = prefs.getBoolean(KEY_VAD, false)
         _vadSensitivity.value = prefs.getInt(KEY_VAD_SENS, 50)
+        _breadcrumbEnabled.value = prefs.getBoolean(KEY_BREADCRUMB, false)
+    }
+
+    fun setBreadcrumbEnabled(on: Boolean) {
+        _breadcrumbEnabled.value = on
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_BREADCRUMB, on).apply()
     }
 
     fun setVadEnabled(on: Boolean) {

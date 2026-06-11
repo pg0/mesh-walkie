@@ -36,8 +36,8 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
     // Last fully-received clip, kept for replay after the live playback.
     @Volatile private var lastPcm: ShortArray? = null
 
-    /** Fired (off the lock) when a clip finishes assembling, with its sender id. */
-    @Volatile var onClipPlayed: ((senderId: String) -> Unit)? = null
+    /** Fired (off the lock) when a clip finishes assembling: sender id + clip id. */
+    @Volatile var onClipPlayed: ((senderId: String, clipId: Int) -> Unit)? = null
 
     /** Feed every delivered Packet.Voice here. Plays when the clip is complete. */
     @Synchronized
@@ -63,11 +63,12 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
             val config = clip.config!!
             val packets = clip.packets.toList()
             val senderId = clip.senderId
+            val clipId = v.clipId
             clips.remove(key)
             Thread {
                 val pcm = codec.decode(config, packets)
                 lastPcm = pcm                       // keep for replay
-                onClipPlayed?.invoke(senderId)
+                onClipPlayed?.invoke(senderId, clipId)
                 play(pcm)
             }.start()
         }

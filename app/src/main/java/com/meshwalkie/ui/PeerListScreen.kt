@@ -48,10 +48,12 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     val linkCount by MeshBus.linkCount.collectAsStateWithLifecycle()
     val roster by MeshBus.roster.collectAsStateWithLifecycle()
     val lastVoice by MeshBus.lastVoice.collectAsStateWithLifecycle()
+    val sentStatus by MeshBus.sentStatus.collectAsStateWithLifecycle()
     val messages by MeshBus.messages.collectAsStateWithLifecycle()
     val myLoc by MeshBus.myLocation.collectAsStateWithLifecycle()
     val waypoints by MeshBus.waypoints.collectAsStateWithLifecycle()
     val target by MeshBus.target.collectAsStateWithLifecycle()
+    val breadcrumbs by MeshBus.breadcrumbs.collectAsStateWithLifecycle()
     var viewMode by remember { mutableIntStateOf(0) }   // 0 list, 1 radar, 2 map
     var showType by remember { mutableStateOf(false) }
     var showWp by remember { mutableStateOf(false) }
@@ -99,7 +101,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
         when (viewMode) {
             1 -> RadarView(peers, heading, Modifier.weight(1f).fillMaxWidth())
             2 -> MapScreen(
-                peers, myLoc, waypoints, target,
+                peers, myLoc, waypoints, target, breadcrumbs,
                 onSetTarget = { la, lo -> MeshBus.setTarget(la, lo) },
                 Modifier.weight(1f).fillMaxWidth()
             )
@@ -170,6 +172,9 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                 TextButton(onClick = { MeshBus.replayHandler?.invoke() }) { Text("Replay") }
             }
         }
+        sentStatus?.let { ss ->
+            Text("✅ $ss", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
+        }
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -178,6 +183,12 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             QuickTextWheel(onSend = { MeshBus.sendTextHandler?.invoke(it) })
             TextButton(onClick = { showType = true }) { Text("Msg") }
             TextButton(onClick = { showWp = true }) { Text("Drop WP") }
+            if (breadcrumbs.isNotEmpty()) {
+                TextButton(onClick = {
+                    val start = breadcrumbs.first()
+                    MeshBus.setTarget(start.first, start.second)
+                }) { Text("Guide back") }
+            }
         }
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),

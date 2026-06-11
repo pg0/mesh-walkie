@@ -16,8 +16,9 @@ class VoiceSender(
 ) {
     private var clipCounter = 0
 
-    fun sendClip(pcm: ShortArray, nowMs: Long) {
-        if (pcm.isEmpty()) return
+    /** @return the clipId assigned to this clip (for delivery-receipt tracking). */
+    fun sendClip(pcm: ShortArray, nowMs: Long): Int {
+        if (pcm.isEmpty()) return -1
         val clipId = clipCounter++
         val encoded = codec.encode(pcm)
 
@@ -40,5 +41,6 @@ class VoiceSender(
         }
         emit(encoded.config, isLast = frames.isEmpty())
         frames.forEachIndexed { i, frame -> emit(frame, isLast = i == frames.lastIndex) }
+        return clipId
     }
 }

@@ -16,6 +16,7 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
 
 /**
  * Real map via osmdroid (OpenStreetMap, no API key, tiles cache for offline).
@@ -28,6 +29,7 @@ fun MapScreen(
     myLoc: Pair<Double, Double>?,
     waypoints: List<WaypointView>,
     target: Pair<Double, Double>?,
+    breadcrumbs: List<Pair<Double, Double>>,
     onSetTarget: (Double, Double) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -49,6 +51,14 @@ fun MapScreen(
         },
         update = { map ->
             map.overlays.clear()
+            // breadcrumb trail
+            if (breadcrumbs.size >= 2) {
+                map.overlays.add(Polyline().apply {
+                    setPoints(breadcrumbs.map { GeoPoint(it.first, it.second) })
+                    outlinePaint.color = android.graphics.Color.argb(180, 79, 195, 247)
+                    outlinePaint.strokeWidth = 6f
+                })
+            }
             // tap to set target
             map.overlays.add(MapEventsOverlay(object : MapEventsReceiver {
                 override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {

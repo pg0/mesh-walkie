@@ -33,6 +33,12 @@ object MeshBus {
     fun setTarget(lat: Double, lon: Double) { _target.value = lat to lon }
     fun clearTarget() { _target.value = null }
 
+    /** My recorded breadcrumb trail (oldest first), for retrace / map polyline. */
+    private val _breadcrumbs = MutableStateFlow<List<Pair<Double, Double>>>(emptyList())
+    val breadcrumbs: StateFlow<List<Pair<Double, Double>>> = _breadcrumbs
+
+    fun publishBreadcrumbs(list: List<Pair<Double, Double>>) { _breadcrumbs.value = list }
+
     private val _myHeading = MutableStateFlow(0f)
     val myHeading: StateFlow<Float> = _myHeading
 
@@ -51,6 +57,10 @@ object MeshBus {
     /** Label for the last received voice message, e.g. "Last from Alice". Null = none yet. */
     private val _lastVoice = MutableStateFlow<String?>(null)
     val lastVoice: StateFlow<String?> = _lastVoice
+
+    /** Delivery status of my last sent clip, e.g. "Heard by 2". Null = none. */
+    private val _sentStatus = MutableStateFlow<String?>(null)
+    val sentStatus: StateFlow<String?> = _sentStatus
 
     /** Quick-text history (sent + received), newest last, capped at 10. */
     private val _messages = MutableStateFlow<List<String>>(emptyList())
@@ -79,5 +89,6 @@ object MeshBus {
     fun publishLinkCount(n: Int) { _linkCount.value = n }
     fun publishStatus(text: String) { _status.value = text }
     fun publishLastVoice(text: String) { _lastVoice.value = text }
+    fun publishSentStatus(text: String) { _sentStatus.value = text }
     fun publishText(text: String) { _messages.value = (_messages.value + text).takeLast(10) }
 }

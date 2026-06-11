@@ -64,7 +64,11 @@ class MeshService : Service() {
 
     @Volatile private var currentGroup = ""
     @Volatile private var currentLinks = 0
+    @Volatile private var lastSentClipId = -1
+    private val acksByClip = HashMap<Int, MutableSet<String>>()   // refClipId -> ackers
     private val outbox = ArrayDeque<ShortArray>()   // voice clips recorded while offline
+    private val breadcrumbs = ArrayList<Pair<Double, Double>>()
+    @Volatile private var lastBreadcrumbMs = 0L
     private val started = AtomicBoolean(false)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -117,6 +121,17 @@ class MeshService : Service() {
             hasFix = true
             MeshBus.publishWaitingForGps(false)
             MeshBus.publishMyLocation(fix.latitude, fix.longitude)
+            if (Settings.breadcrumbEnabled.value) {
+                val now = System.currentTimeMillis()
+                if (now - lastBreadcrumbMs > 30_000L) {
+                    lastBreadcrumbMs = now
+                    synchronized(breadcrumbs) {
+                        breadcrumbs.add(fix.latitude to fix.longitude)
+                        while (breadcrumbs.size > 500) breadcrumbs.removeAt(0)
+                        MeshBus.publishBreadcrumbs(breadcrumbs.toList())
+                    }
+                }
+            }
             engine.send(
                 Packet.Position(
                     originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
@@ -153,9 +168,16 @@ class MeshService : Service() {
         MeshBus.sendTextHandler = { text -> sendText(text) }
         MeshBus.dropWaypointHandler = { label -> dropWaypoint(label) }
         MeshBus.removeWaypointHandler = { id -> waypointStore.remove(id); publishPeers() }
-        voicePlayer.onClipPlayed = { senderId ->
+        voicePlayer.onClipPlayed = { senderId, clipId ->
             val name = registry.nameOf(senderId) ?: senderId
             MeshBus.publishLastVoice("Last message from $name")
+            // send a delivery receipt back to the sender
+            engine.send(
+                Packet.Ack(
+                    originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
+                    System.currentTimeMillis(), refOriginId = senderId, refClipId = clipId
+                )
+            )
         }
 
         // presence heartbeat + freshness re-render
@@ -193,6 +215,13 @@ class MeshService : Service() {
             if (packet is Packet.Waypoint) {
                 waypointStore.add(packet.dedupKey, packet.senderName, packet.lat, packet.lon, packet.label)
                 beep()
+            }
+            if (packet is Packet.Ack && packet.refOriginId == originId) {
+                val ackers = acksByClip.getOrPut(packet.refClipId) { mutableSetOf() }
+                ackers.add(packet.originId)
+                if (packet.refClipId == lastSentClipId) {
+                    MeshBus.publishSentStatus("Heard by ${ackers.size}")
+                }
             }
             publishPeers()
         }
@@ -269,13 +298,14 @@ class MeshService : Service() {
             }
             MeshBus.publishStatus("Voice queued (offline) - sends on reconnect")
         } else {
-            voiceSender.sendClip(pcm, System.currentTimeMillis())
+            lastSentClipId = voiceSender.sendClip(pcm, System.currentTimeMillis())
+            MeshBus.publishSentStatus("Sent - heard by 0")
         }
     }
 
     private fun flushOutbox() {
         val pending = synchronized(outbox) { val l = outbox.toList(); outbox.clear(); l }
-        pending.forEach { voiceSender.sendClip(it, System.currentTimeMillis()) }
+        pending.forEach { lastSentClipId = voiceSender.sendClip(it, System.currentTimeMillis()) }
     }
 
     private fun publishPeers() {
