@@ -14,7 +14,7 @@ object Settings {
     private const val KEY_NAME = "display_name"
     private const val KEY_DARK = "dark_mode"
     private const val KEY_GROUP = "group_code"
-    const val DEFAULT_GROUP = "field1"
+    const val DEFAULT_GROUP = "channel-1"
 
     private lateinit var appContext: Context
 

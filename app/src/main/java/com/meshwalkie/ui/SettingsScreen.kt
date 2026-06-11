@@ -60,7 +60,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(20.dp))
 
-        Text("Group (same code = same mesh)", style = MaterialTheme.typography.labelLarge)
+        Text("Channel", style = MaterialTheme.typography.labelLarge)
         OutlinedTextField(
             value = groupField,
             onValueChange = { groupField = it },
@@ -68,7 +68,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth()
         )
         Text(
-            "Only devices with the same code connect. Share a private code for a private group.",
+            "Everyone on the same channel hears each other. Pick a shared name (e.g. team-alpha) for a private channel.",
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 4.dp)
         )

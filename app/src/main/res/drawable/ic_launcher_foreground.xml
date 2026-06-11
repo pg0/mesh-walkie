@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- broadcast waves above the arrow tip -->
+    <path
+        android:pathData="M40,34 Q54,20 68,34"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M47,37 Q54,29 61,37"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round" />
+    <!-- navigation arrow (the bearing pointer) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,42 L37,82 L54,71 L71,82 Z" />
+</vector>
