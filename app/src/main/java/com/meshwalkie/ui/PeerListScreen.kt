@@ -18,6 +18,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,6 +42,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
     val linkCount by MeshBus.linkCount.collectAsStateWithLifecycle()
     val roster by MeshBus.roster.collectAsStateWithLifecycle()
     val lastVoice by MeshBus.lastVoice.collectAsStateWithLifecycle()
+    var showRadar by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
@@ -58,7 +62,17 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
             )
         }
 
-        LazyColumn(modifier = Modifier.weight(1f)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            TextButton(onClick = { showRadar = false }) { Text(if (showRadar) "List" else "List ●") }
+            TextButton(onClick = { showRadar = true }) { Text(if (showRadar) "Radar ●" else "Radar") }
+        }
+
+        if (showRadar) {
+            RadarView(peers, heading, Modifier.weight(1f).fillMaxWidth())
+        } else LazyColumn(modifier = Modifier.weight(1f)) {
             // Full arrow rows when positions are known.
             items(peers, key = { "p_${it.id}" }) { peer ->
                 PeerRow(peer = peer, myHeadingDeg = heading)
