@@ -1,10 +1,17 @@
 package com.meshwalkie.ui
 
 import android.content.Context
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.meshwalkie.core.Display
 import com.meshwalkie.core.PeerView
@@ -33,9 +40,11 @@ fun MapScreen(
 ) {
     val ctx = LocalContext.current
     val centered = remember { booleanArrayOf(false) }
+    val mapHolder = remember { arrayOfNulls<MapView>(1) }
 
+    Box(modifier = modifier) {
     AndroidView(
-        modifier = modifier,
+        modifier = Modifier.fillMaxSize(),
         factory = { c ->
             Configuration.getInstance().load(
                 c, c.getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
@@ -45,7 +54,7 @@ fun MapScreen(
                 setTileSource(TileSourceFactory.MAPNIK)
                 setMultiTouchControls(true)
                 controller.setZoom(16.0)
-            }
+            }.also { mapHolder[0] = it }
         },
         update = { map ->
             map.overlays.clear()
@@ -102,4 +111,11 @@ fun MapScreen(
             map.invalidate()
         }
     )
+        myLoc?.let { (lat, lon) ->
+            Button(
+                onClick = { mapHolder[0]?.controller?.animateTo(GeoPoint(lat, lon)) },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)
+            ) { Text("◎ Me") }
+        }
+    }
 }

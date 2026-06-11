@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meshwalkie.service.MeshBus
 import com.meshwalkie.service.Settings
 
 @Composable
@@ -40,7 +41,8 @@ fun SettingsScreen(onBack: () -> Unit) {
     val vadSens by Settings.vadSensitivity.collectAsStateWithLifecycle()
     val btHeadsetOn by Settings.btHeadset.collectAsStateWithLifecycle()
     val netHost by Settings.internetHost.collectAsStateWithLifecycle()
-    val netClient by Settings.internetClient.collectAsStateWithLifecycle()
+    val gpsOn by Settings.gpsEnabled.collectAsStateWithLifecycle()
+    val myHostIp by MeshBus.myHostIp.collectAsStateWithLifecycle()
     val savedName by Settings.displayName.collectAsStateWithLifecycle()
     val savedGroup by Settings.groupCode.collectAsStateWithLifecycle()
     val savedQuickTexts by Settings.quickTexts.collectAsStateWithLifecycle()
@@ -133,6 +135,17 @@ fun SettingsScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            Text("Share my GPS position", style = MaterialTheme.typography.labelLarge)
+            Switch(checked = gpsOn, onCheckedChange = { Settings.setGpsEnabled(it) })
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Text("Auto-talk (VAD, hands-free)", style = MaterialTheme.typography.labelLarge)
             Switch(checked = vadOn, onCheckedChange = { Settings.setVadEnabled(it) })
         }
@@ -160,7 +173,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         Text("Fallback via internet", style = MaterialTheme.typography.labelLarge)
         Text(
-            "Extends range beyond the BLE mesh. One device hosts; others join over the internet (host's IPv6 is shared on the mesh).",
+            "Extends range beyond the BLE mesh. Host here; others join from the Server menu on the main screen (your IPv6 is shared on the mesh, or enter it manually).",
             style = MaterialTheme.typography.bodySmall
         )
         Row(
@@ -171,13 +184,8 @@ fun SettingsScreen(onBack: () -> Unit) {
             Text("Host (this device is the server)", style = MaterialTheme.typography.bodyMedium)
             Switch(checked = netHost, onCheckedChange = { Settings.setInternetHost(it) })
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("Client (join a host)", style = MaterialTheme.typography.bodyMedium)
-            Switch(checked = netClient, onCheckedChange = { Settings.setInternetClient(it) })
+        myHostIp?.let {
+            Text("Hosting at [$it]:51820", style = MaterialTheme.typography.bodySmall)
         }
 
         Spacer(Modifier.height(28.dp))

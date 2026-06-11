@@ -57,7 +57,6 @@ class MeshService : Service() {
     private lateinit var voiceSender: VoiceSender
     private var hostServer: HostServer? = null
     private var serverLink: ServerLink? = null
-    @Volatile private var knownHost: Triple<String, String, Int>? = null   // id, ip, port
     private val registry = PeerRegistry()
     private val router = TransportRouter()
     private val waypointStore = WaypointStore()
@@ -131,12 +130,15 @@ class MeshService : Service() {
             hasFix = true
             MeshBus.publishWaitingForGps(false)
             MeshBus.publishMyLocation(fix.latitude, fix.longitude)
-            engine.send(
-                Packet.Position(
-                    originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
-                    System.currentTimeMillis(), fix.latitude, fix.longitude, myHeading
+            // Privacy: only broadcast my position when GPS sharing is enabled.
+            if (Settings.gpsEnabled.value) {
+                engine.send(
+                    Packet.Position(
+                        originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
+                        System.currentTimeMillis(), fix.latitude, fix.longitude, myHeading
+                    )
                 )
-            )
+            }
             publishPeers()
         }
 
@@ -165,13 +167,10 @@ class MeshService : Service() {
         // Route mic/audio to a Bluetooth headset when the setting is on.
         scope.launch { Settings.btHeadset.collect { on -> applyHeadsetRouting(on) } }
 
-        // Internet fallback: host the relay, or join an announced host.
+        // Internet fallback: host the relay (toggle); joining is explicit per-host.
         scope.launch { Settings.internetHost.collect { on -> if (on) startHost() else stopHost() } }
-        scope.launch {
-            Settings.internetClient.collect { on ->
-                if (on) knownHost?.let { joinHost(it.second, it.third) } else disconnectClient()
-            }
-        }
+        MeshBus.joinHandler = { ip, port -> joinHost(ip, port) }
+        MeshBus.leaveHostHandler = { disconnectClient() }
 
         MeshBus.pttHandler = { pressed -> onPtt(pressed) }
         MeshBus.replayHandler = { voicePlayer.replayLast() }
@@ -366,8 +365,7 @@ class MeshService : Service() {
 
     private fun onHostAnnounced(p: Packet.Host) {
         if (p.originId == originId) return
-        knownHost = Triple(p.originId, p.ip, p.port)
-        if (Settings.internetClient.value && serverLink == null) joinHost(p.ip, p.port)
+        MeshBus.addHost(HostInfo(p.originId, p.name, p.ip, p.port))
     }
 
     private fun startHost() {
@@ -381,6 +379,7 @@ class MeshService : Service() {
         hs.start()
         composite.add(hs)
         hostServer = hs
+        MeshBus.publishMyHostIp(ip)
         MeshBus.publishStatus("Hosting at [$ip]:${NetUtil.DEFAULT_PORT}")
         announceHost(ip)
     }
@@ -398,12 +397,16 @@ class MeshService : Service() {
     private fun stopHost() {
         hostServer?.let { composite.remove(it); it.stop() }
         hostServer = null
+        MeshBus.publishMyHostIp(null)
+        MeshBus.publishStatus(statusText(currentLinks))
     }
 
     private fun joinHost(ip: String, port: Int) {
-        if (serverLink != null) return
+        disconnectClient()
         val link = ServerLink(ip, port)
-        link.onState = { c -> MeshBus.publishStatus(if (c) "Joined internet host" else "Internet host lost") }
+        link.onState = { c ->
+            MeshBus.publishStatus(if (c) "Joined internet host $ip" else statusText(currentLinks))
+        }
         link.connect()
         composite.add(link)
         serverLink = link
@@ -412,6 +415,7 @@ class MeshService : Service() {
     private fun disconnectClient() {
         serverLink?.let { composite.remove(it); it.close() }
         serverLink = null
+        MeshBus.publishStatus(statusText(currentLinks))
     }
 
     private fun dropWaypoint(label: String) {
@@ -455,6 +459,8 @@ class MeshService : Service() {
         MeshBus.dropWaypointHandler = null
         MeshBus.removeWaypointHandler = null
         MeshBus.dropWaypointAtHandler = null
+        MeshBus.joinHandler = null
+        MeshBus.leaveHostHandler = null
         voicePlayer.onClipPlayed = null
         pttHeld.set(false)
         vad.stop()

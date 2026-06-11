@@ -22,6 +22,7 @@ object Settings {
     private const val KEY_BT_HEADSET = "bt_headset"
     private const val KEY_NET_HOST = "net_host"
     private const val KEY_NET_CLIENT = "net_client"
+    private const val KEY_GPS = "gps_enabled"
 
     private lateinit var appContext: Context
 
@@ -64,6 +65,10 @@ object Settings {
     private val _internetClient = MutableStateFlow(false)
     val internetClient: StateFlow<Boolean> = _internetClient
 
+    /** Share my GPS position on the mesh. Off = privacy, no position broadcast. */
+    private val _gpsEnabled = MutableStateFlow(true)
+    val gpsEnabled: StateFlow<Boolean> = _gpsEnabled
+
     /** Stable device id (read-only), shown in settings. */
     var deviceId: String = ""
         private set
@@ -85,6 +90,13 @@ object Settings {
         _btHeadset.value = prefs.getBoolean(KEY_BT_HEADSET, false)
         _internetHost.value = prefs.getBoolean(KEY_NET_HOST, false)
         _internetClient.value = prefs.getBoolean(KEY_NET_CLIENT, false)
+        _gpsEnabled.value = prefs.getBoolean(KEY_GPS, true)
+    }
+
+    fun setGpsEnabled(on: Boolean) {
+        _gpsEnabled.value = on
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_GPS, on).apply()
     }
 
     fun setBtHeadset(on: Boolean) {

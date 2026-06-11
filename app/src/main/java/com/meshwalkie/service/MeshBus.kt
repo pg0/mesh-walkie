@@ -6,6 +6,9 @@ import com.meshwalkie.core.WaypointView
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
+/** An announced internet relay host. */
+data class HostInfo(val id: String, val name: String, val ip: String, val port: Int)
+
 /**
  * Process-wide bridge: MeshService writes, Compose reads.
  * pttHandler is set by the service; UI calls it with pressed=true/false.
@@ -33,6 +36,24 @@ object MeshBus {
     fun setTarget(lat: Double, lon: Double) { _target.value = lat to lon }
     fun clearTarget() { _target.value = null }
 
+    /** Announced internet relay hosts (from the mesh), newest info per id. */
+    private val _hosts = MutableStateFlow<List<HostInfo>>(emptyList())
+    val hosts: StateFlow<List<HostInfo>> = _hosts
+
+    fun addHost(info: HostInfo) {
+        _hosts.value = (_hosts.value.filter { it.id != info.id } + info).takeLast(8)
+    }
+
+    /** My own public IPv6 while hosting; null when not hosting. */
+    private val _myHostIp = MutableStateFlow<String?>(null)
+    val myHostIp: StateFlow<String?> = _myHostIp
+    fun publishMyHostIp(ip: String?) { _myHostIp.value = ip }
+
+    /** Set by the service; UI calls it to join a host at ip:port. */
+    @Volatile var joinHandler: ((ip: String, port: Int) -> Unit)? = null
+    /** Set by the service; UI calls it to leave the joined host. */
+    @Volatile var leaveHostHandler: (() -> Unit)? = null
+
 
     private val _myHeading = MutableStateFlow(0f)
     val myHeading: StateFlow<Float> = _myHeading
@@ -57,9 +78,9 @@ object MeshBus {
     private val _sentStatus = MutableStateFlow<String?>(null)
     val sentStatus: StateFlow<String?> = _sentStatus
 
-    /** Quick-text history (sent + received), newest last, capped at 10. */
-    private val _messages = MutableStateFlow<List<String>>(emptyList())
-    val messages: StateFlow<List<String>> = _messages
+    /** Quick-text history (text, receivedAtMs), newest last, capped at 10. */
+    private val _messages = MutableStateFlow<List<Pair<String, Long>>>(emptyList())
+    val messages: StateFlow<List<Pair<String, Long>>> = _messages
 
     @Volatile var pttHandler: ((pressed: Boolean) -> Unit)? = null
 
@@ -88,5 +109,7 @@ object MeshBus {
     fun publishStatus(text: String) { _status.value = text }
     fun publishLastVoice(text: String) { _lastVoice.value = text }
     fun publishSentStatus(text: String) { _sentStatus.value = text }
-    fun publishText(text: String) { _messages.value = (_messages.value + text).takeLast(10) }
+    fun publishText(text: String) {
+        _messages.value = (_messages.value + (text to System.currentTimeMillis())).takeLast(10)
+    }
 }

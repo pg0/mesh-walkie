@@ -64,6 +64,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     var showType by remember { mutableStateOf(false) }
     var showWp by remember { mutableStateOf(false) }
     var showDropTarget by remember { mutableStateOf(false) }
+    var showServers by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
@@ -76,6 +77,10 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                 var menuOpen by remember { mutableStateOf(false) }
                 TextButton(onClick = { menuOpen = true }) { Text("⋮") }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Servers") },
+                        onClick = { menuOpen = false; showServers = true }
+                    )
                     DropdownMenuItem(
                         text = { Text("Settings") },
                         onClick = { menuOpen = false; onOpenSettings() }
@@ -170,8 +175,12 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                     .heightIn(max = 56.dp)   // ~2 lines, so it never shrinks the map
                     .padding(top = 8.dp)
             ) {
-                items(messages.asReversed()) { m ->
-                    Text("💬 $m", style = MaterialTheme.typography.bodyMedium)
+                val now = System.currentTimeMillis()
+                items(messages.asReversed()) { (text, atMs) ->
+                    Text(
+                        "💬 $text  ·  ${Display.formatAge(now - atMs)} ago",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
         }
@@ -229,6 +238,9 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                 onConfirm = { MeshBus.dropWaypointHandler?.invoke(it) },
                 onDismiss = { showWp = false }
             )
+        }
+        if (showServers) {
+            ServerDialog(onDismiss = { showServers = false })
         }
         if (showDropTarget) {
             val t = target
