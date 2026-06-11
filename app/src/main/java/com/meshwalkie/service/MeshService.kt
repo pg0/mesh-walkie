@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import com.meshwalkie.audio.PttRecorder
+import com.meshwalkie.audio.VadRecorder
 import com.meshwalkie.audio.VoicePlayer
 import com.meshwalkie.audio.VoiceSender
 import com.meshwalkie.core.MeshEngine
@@ -23,9 +24,11 @@ import com.meshwalkie.location.LocationSource
 import com.meshwalkie.nearby.NearbyTransport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -51,6 +54,8 @@ class MeshService : Service() {
     private val headingSource by lazy { HeadingSource(this) }
     private val voicePlayer = VoicePlayer()
     private val recorder = PttRecorder()
+    private val vad = VadRecorder()
+    private var vadJob: Job? = null
 
     @Volatile private var myLat = 0.0
     @Volatile private var myLon = 0.0
@@ -58,6 +63,8 @@ class MeshService : Service() {
     @Volatile private var hasFix = false
 
     @Volatile private var currentGroup = ""
+    @Volatile private var currentLinks = 0
+    private val outbox = ArrayDeque<ShortArray>()   // voice clips recorded while offline
     private val started = AtomicBoolean(false)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -124,6 +131,23 @@ class MeshService : Service() {
             MeshBus.publishHeading(deg)
         }
 
+        // Voice-activated transmit: (re)start the VAD loop when enabled or when
+        // the sensitivity changes; stop it when disabled.
+        scope.launch {
+            combine(Settings.vadEnabled, Settings.vadSensitivity) { en, sens -> en to sens }
+                .collect { (enabled, sens) ->
+                    vad.stop()
+                    vadJob?.join()
+                    vadJob = null
+                    if (enabled) {
+                        val threshold = vad.thresholdFor(sens)
+                        vadJob = scope.launch(Dispatchers.IO) {
+                            vad.run(threshold) { pcm -> emitClip(pcm) }
+                        }
+                    }
+                }
+        }
+
         MeshBus.pttHandler = { pressed -> onPtt(pressed) }
         MeshBus.replayHandler = { voicePlayer.replayLast() }
         MeshBus.sendTextHandler = { text -> sendText(text) }
@@ -174,8 +198,11 @@ class MeshService : Service() {
         }
 
         transport.onLinksChanged = { n ->
+            val was = currentLinks
+            currentLinks = n
             MeshBus.publishLinkCount(n)
             MeshBus.publishStatus(statusText(n))
+            if (was == 0 && n > 0) flushOutbox()   // reconnected: deliver queued clips
         }
         MeshBus.publishLinkCount(0)
         MeshBus.publishStatus(statusText(0))   // "Suche Geraete…" until first link
@@ -219,15 +246,36 @@ class MeshService : Service() {
     }
 
     private fun onPtt(pressed: Boolean) {
+        // VAD owns the mic when enabled; ignore manual PTT to avoid two AudioRecords.
+        if (Settings.vadEnabled.value) return
         if (pressed) {
             if (pttHeld.getAndSet(true)) return
             scope.launch(Dispatchers.IO) {
                 val pcm = recorder.record(isHeld = { pttHeld.get() })
-                voiceSender.sendClip(pcm, System.currentTimeMillis())
+                emitClip(pcm)
             }
         } else {
             pttHeld.set(false)
         }
+    }
+
+    /** Send a recorded clip now, or queue it (outbox) if no peers are connected. */
+    private fun emitClip(pcm: ShortArray) {
+        if (pcm.isEmpty()) return
+        if (currentLinks == 0) {
+            synchronized(outbox) {
+                outbox.addLast(pcm)
+                while (outbox.size > 5) outbox.removeFirst()
+            }
+            MeshBus.publishStatus("Voice queued (offline) - sends on reconnect")
+        } else {
+            voiceSender.sendClip(pcm, System.currentTimeMillis())
+        }
+    }
+
+    private fun flushOutbox() {
+        val pending = synchronized(outbox) { val l = outbox.toList(); outbox.clear(); l }
+        pending.forEach { voiceSender.sendClip(it, System.currentTimeMillis()) }
     }
 
     private fun publishPeers() {
@@ -278,6 +326,7 @@ class MeshService : Service() {
         MeshBus.removeWaypointHandler = null
         voicePlayer.onClipPlayed = null
         pttHeld.set(false)
+        vad.stop()
         locationSource.stop()
         headingSource.stop()
         transport.stop()

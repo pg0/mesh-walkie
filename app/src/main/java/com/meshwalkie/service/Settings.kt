@@ -17,6 +17,8 @@ object Settings {
     const val DEFAULT_GROUP = "channel-1"
     private const val KEY_QUICKTEXTS = "quick_texts"
     private val DEFAULT_QUICKTEXTS = listOf("OK", "Wait", "Help!", "On my way", "Turning back", "Regroup")
+    private const val KEY_VAD = "vad_enabled"
+    private const val KEY_VAD_SENS = "vad_sensitivity"
 
     private lateinit var appContext: Context
 
@@ -39,6 +41,14 @@ object Settings {
     private val _quickTexts = MutableStateFlow(DEFAULT_QUICKTEXTS)
     val quickTexts: StateFlow<List<String>> = _quickTexts
 
+    /** Voice-activated transmit (hands-free): auto-send a clip when speech is detected. */
+    private val _vadEnabled = MutableStateFlow(false)
+    val vadEnabled: StateFlow<Boolean> = _vadEnabled
+
+    /** VAD sensitivity 0..100; higher = picks up quieter sound (lower energy threshold). */
+    private val _vadSensitivity = MutableStateFlow(50)
+    val vadSensitivity: StateFlow<Int> = _vadSensitivity
+
     /** Stable device id (read-only), shown in settings. */
     var deviceId: String = ""
         private set
@@ -55,6 +65,21 @@ object Settings {
         val saved = prefs.getString(KEY_QUICKTEXTS, null)
         _quickTexts.value = saved?.split("\n")?.map { it.trim() }?.filter { it.isNotEmpty() }
             ?.ifEmpty { DEFAULT_QUICKTEXTS } ?: DEFAULT_QUICKTEXTS
+        _vadEnabled.value = prefs.getBoolean(KEY_VAD, false)
+        _vadSensitivity.value = prefs.getInt(KEY_VAD_SENS, 50)
+    }
+
+    fun setVadEnabled(on: Boolean) {
+        _vadEnabled.value = on
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_VAD, on).apply()
+    }
+
+    fun setVadSensitivity(value: Int) {
+        val v = value.coerceIn(0, 100)
+        _vadSensitivity.value = v
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putInt(KEY_VAD_SENS, v).apply()
     }
 
     /** Save preset quick-texts (max 8, non-empty). */

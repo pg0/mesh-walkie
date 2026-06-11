@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,6 +33,8 @@ fun SettingsScreen(onBack: () -> Unit) {
     BackHandler { onBack() }
 
     val dark by Settings.darkMode.collectAsStateWithLifecycle()
+    val vadOn by Settings.vadEnabled.collectAsStateWithLifecycle()
+    val vadSens by Settings.vadSensitivity.collectAsStateWithLifecycle()
     val savedName by Settings.displayName.collectAsStateWithLifecycle()
     val savedGroup by Settings.groupCode.collectAsStateWithLifecycle()
     val savedQuickTexts by Settings.quickTexts.collectAsStateWithLifecycle()
@@ -98,6 +101,25 @@ fun SettingsScreen(onBack: () -> Unit) {
         ) {
             Text("Dark mode (OLED)", style = MaterialTheme.typography.labelLarge)
             Switch(checked = dark, onCheckedChange = { Settings.setDarkMode(it) })
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Auto-talk (VAD, hands-free)", style = MaterialTheme.typography.labelLarge)
+            Switch(checked = vadOn, onCheckedChange = { Settings.setVadEnabled(it) })
+        }
+        if (vadOn) {
+            Text("Sensitivity: $vadSens (higher = picks up quieter)", style = MaterialTheme.typography.bodySmall)
+            Slider(
+                value = vadSens.toFloat(),
+                onValueChange = { Settings.setVadSensitivity(it.toInt()) },
+                valueRange = 0f..100f
+            )
         }
 
         Spacer(Modifier.height(28.dp))
