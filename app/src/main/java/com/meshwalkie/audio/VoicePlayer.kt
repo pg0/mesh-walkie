@@ -19,6 +19,7 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
     // A clip is dropped if no packet for it arrives within this window, so a
     // permanently lost intermediate frame can never leak its map entry forever.
     private val CLIP_TIMEOUT_MS = 10_000L
+    private val MAX_PENDING = 5            // cap deferred-while-talking backlog
 
     private class ClipState {
         val reorder = ReorderBuffer()
@@ -41,10 +42,35 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
 
     /**
      * True while THIS device is recording (PTT held / VAD capturing). Half-duplex:
-     * suppress playback so the far side's voice coming out of our speaker is not
-     * picked up by our open mic and recorded into our own clip (acoustic echo).
+     * defer playback so the far side's voice coming out of our speaker is not
+     * picked up by our open mic (acoustic echo). Clips that arrive while
+     * transmitting are queued in [pending] and played once we stop, so nothing
+     * is missed - just delayed until we finish talking.
      */
-    @Volatile var transmitting = false
+    @Volatile private var transmitting = false
+    private val pending = ArrayDeque<ShortArray>()   // clips received while transmitting
+    private val flushing = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** Set by the service on PTT/VAD start (true) and end (false); false flushes [pending]. */
+    fun setTransmitting(on: Boolean) {
+        transmitting = on
+        if (!on) flushPending()
+    }
+
+    private fun flushPending() {
+        if (!flushing.compareAndSet(false, true)) return   // one drain at a time
+        Thread {
+            try {
+                while (!transmitting) {
+                    val next = synchronized(pending) { if (pending.isEmpty()) null else pending.removeFirst() }
+                        ?: break
+                    if (!muted) play(next, force = true)
+                }
+            } finally {
+                flushing.set(false)
+            }
+        }.start()
+    }
 
     /** Fired (off the lock) when a clip finishes assembling: sender id + clip id. */
     @Volatile var onClipPlayed: ((senderId: String, clipId: Int) -> Unit)? = null
@@ -98,9 +124,17 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
     }
 
     private fun play(pcm: ShortArray, force: Boolean = false) {
-        // muted: cached for replay, just not played. transmitting: half-duplex,
-        // don't leak the far side into our open mic. force (replay) bypasses both.
-        if (pcm.isEmpty() || (!force && (muted || transmitting))) return
+        if (pcm.isEmpty()) return
+        if (!force) {
+            if (muted) return                 // user mute: cached for replay, dropped from audio
+            if (transmitting) {               // half-duplex: defer, don't drop, play after we stop
+                synchronized(pending) {
+                    pending.addLast(pcm)
+                    while (pending.size > MAX_PENDING) pending.removeFirst()
+                }
+                return
+            }
+        }
         val bytes = ByteBuffer.allocate(pcm.size * 2).order(ByteOrder.LITTLE_ENDIAN)
         pcm.forEach { bytes.putShort(it) }
         val track = AudioTrack.Builder()

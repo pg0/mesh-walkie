@@ -364,12 +364,12 @@ class MeshService : Service() {
             if (pttHeld.getAndSet(true)) return
             scope.launch(Dispatchers.IO) {
                 MeshBus.publishRecording(true)
-                voicePlayer.transmitting = true   // half-duplex: mute playback while mic is open
+                voicePlayer.setTransmitting(true)   // half-duplex: defer playback while mic is open
                 val pcm = try {
                     recorder.record(isHeld = { pttHeld.get() }, audioSource = micSource())
                 } finally {
                     MeshBus.publishRecording(false)   // false on max-cut too (finger may still be down)
-                    voicePlayer.transmitting = false
+                    voicePlayer.setTransmitting(false)   // flush whatever arrived while we talked
                 }
                 emitClip(pcm)
             }
