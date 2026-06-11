@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,6 +39,7 @@ import com.meshwalkie.core.PeerRosterEntry
 import com.meshwalkie.core.PeerView
 import com.meshwalkie.core.WaypointView
 import com.meshwalkie.service.MeshBus
+import com.meshwalkie.service.Settings
 
 @Composable
 fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
@@ -54,6 +57,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     val waypoints by MeshBus.waypoints.collectAsStateWithLifecycle()
     val target by MeshBus.target.collectAsStateWithLifecycle()
     val breadcrumbs by MeshBus.breadcrumbs.collectAsStateWithLifecycle()
+    val vadOn by Settings.vadEnabled.collectAsStateWithLifecycle()
     var viewMode by remember { mutableIntStateOf(0) }   // 0 list, 1 radar, 2 map
     var showType by remember { mutableStateOf(false) }
     var showWp by remember { mutableStateOf(false) }
@@ -100,11 +104,11 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
         }
 
         when (viewMode) {
-            1 -> RadarView(peers, heading, Modifier.weight(1f).fillMaxWidth())
+            1 -> RadarView(peers, heading, Modifier.weight(1f).fillMaxWidth().clipToBounds())
             2 -> MapScreen(
                 peers, myLoc, waypoints, target, breadcrumbs,
                 onSetTarget = { la, lo -> MeshBus.setTarget(la, lo) },
-                Modifier.weight(1f).fillMaxWidth()
+                Modifier.weight(1f).fillMaxWidth().clipToBounds()
             )
             else -> LazyColumn(modifier = Modifier.weight(1f)) {
             // Pinned navigation target on top.
@@ -199,9 +203,18 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
         }
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-            horizontalArrangement = Arrangement.Center
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            PttButton(onPtt = { pressed -> MeshBus.pttHandler?.invoke(pressed) })
+            if (!vadOn) {
+                PttButton(onPtt = { pressed -> MeshBus.pttHandler?.invoke(pressed) })
+            } else {
+                Text("Auto-talk active", style = MaterialTheme.typography.titleMedium)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Auto-talk", style = MaterialTheme.typography.labelMedium)
+                Switch(checked = vadOn, onCheckedChange = { Settings.setVadEnabled(it) })
+            }
         }
 
         if (showType) {

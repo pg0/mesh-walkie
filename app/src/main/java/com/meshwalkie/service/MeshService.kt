@@ -64,6 +64,7 @@ class MeshService : Service() {
 
     @Volatile private var currentGroup = ""
     @Volatile private var currentLinks = 0
+    @Volatile private var everConnected = false   // have we ever had a peer this session?
     @Volatile private var lastSentClipId = -1
     private val acksByClip = HashMap<Int, MutableSet<String>>()   // refClipId -> ackers
     private val outbox = ArrayDeque<ShortArray>()   // voice clips recorded while offline
@@ -230,6 +231,7 @@ class MeshService : Service() {
         transport.onLinksChanged = { n ->
             val was = currentLinks
             currentLinks = n
+            if (n > 0) everConnected = true
             MeshBus.publishLinkCount(n)
             MeshBus.publishStatus(statusText(n))
             if (was == 0 && n > 0) flushOutbox()   // reconnected: deliver queued clips
@@ -289,18 +291,25 @@ class MeshService : Service() {
         }
     }
 
-    /** Send a recorded clip now, or queue it (outbox) if no peers are connected. */
+    /**
+     * Send a recorded clip now; if peers dropped (we were connected, now 0),
+     * queue it for reconnect. If we have NEVER connected this session, do not
+     * queue - there is nobody to talk to and a future joiner should not get a
+     * backlog of old clips.
+     */
     private fun emitClip(pcm: ShortArray) {
         if (pcm.isEmpty()) return
-        if (currentLinks == 0) {
+        if (currentLinks > 0) {
+            lastSentClipId = voiceSender.sendClip(pcm, System.currentTimeMillis())
+            MeshBus.publishSentStatus("Sent - heard by 0")
+        } else if (everConnected) {
             synchronized(outbox) {
                 outbox.addLast(pcm)
                 while (outbox.size > 5) outbox.removeFirst()
             }
-            MeshBus.publishStatus("Voice queued (offline) - sends on reconnect")
+            MeshBus.publishStatus("Voice queued - peer offline, sends on reconnect")
         } else {
-            lastSentClipId = voiceSender.sendClip(pcm, System.currentTimeMillis())
-            MeshBus.publishSentStatus("Sent - heard by 0")
+            MeshBus.publishStatus("No peers connected - not sent")
         }
     }
 

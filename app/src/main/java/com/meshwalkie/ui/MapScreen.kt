@@ -69,6 +69,7 @@ fun MapScreen(
             myLoc?.let { (lat, lon) ->
                 map.overlays.add(Marker(map).apply {
                     position = GeoPoint(lat, lon); title = "You"
+                    setTextIcon("◉ you")
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                 })
             }
@@ -76,16 +77,21 @@ fun MapScreen(
                 map.overlays.add(Marker(map).apply {
                     position = GeoPoint(p.lat, p.lon)
                     title = "${p.name}  ${Display.formatDistance(p.distanceMeters)}"
+                    // peers keep the default pin
                 })
             }
             waypoints.forEach { w ->
                 map.overlays.add(Marker(map).apply {
-                    position = GeoPoint(w.lat, w.lon); title = "📍 ${w.label}"
+                    position = GeoPoint(w.lat, w.lon); title = "Waypoint: ${w.label}"
+                    setTextIcon("📍 ${w.label}")   // distinct from peer pins
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                 })
             }
             target?.let { (lat, lon) ->
                 map.overlays.add(Marker(map).apply {
-                    position = GeoPoint(lat, lon); title = "🎯 Target"
+                    position = GeoPoint(lat, lon); title = "Target"
+                    setTextIcon("🎯 target")
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                 })
             }
             if (!centered[0]) {
