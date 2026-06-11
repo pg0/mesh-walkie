@@ -29,16 +29,21 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
         var lastFrameSeen = false
         var lastFrameNum = -1            // frameNum carried on the isLast packet
         var emittedCount = 0             // frames the buffer has emitted (incl. config frame 0)
+        var live = false                 // part of a continuous live stream
         var lastActivityMs = System.currentTimeMillis()
     }
 
     private val clips = HashMap<String, ClipState>()
+
+    /** Gapless playback path for live-stream clips. */
+    private val streamPlayer = StreamPlayer()
 
     // Last fully-received clip, kept for replay after the live playback.
     @Volatile private var lastPcm: ShortArray? = null
 
     /** When true, received clips are decoded + cached for replay but not played aloud. */
     @Volatile var muted = false
+        set(value) { field = value; streamPlayer.muted = value }
 
     /**
      * True while THIS device is recording (PTT held / VAD capturing). Half-duplex:
@@ -83,6 +88,7 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
         val clip = clips.getOrPut(key) { ClipState() }
         clip.senderId = v.originId
         clip.lastActivityMs = System.currentTimeMillis()
+        if (v.live) clip.live = true
         if (v.isLast) {
             clip.lastFrameSeen = true
             clip.lastFrameNum = v.frameNum
@@ -100,12 +106,18 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
             val packets = clip.packets.toList()
             val senderId = clip.senderId
             val clipId = v.clipId
+            val live = clip.live
             clips.remove(key)
             Thread {
                 val pcm = codec.decode(config, packets)
-                lastPcm = pcm                       // keep for replay
-                onClipPlayed?.invoke(senderId, clipId)
-                play(pcm)
+                if (live) {
+                    // Continuous stream: gapless path, no replay-cache, no per-chunk ack spam.
+                    streamPlayer.write(pcm)
+                } else {
+                    lastPcm = pcm                   // keep for replay
+                    onClipPlayed?.invoke(senderId, clipId)
+                    play(pcm)
+                }
             }.start()
         }
     }

@@ -22,7 +22,7 @@ class PacketCodecTest {
         val opus = byteArrayOf(1, 2, 3, 4, 5, -1, 0, 127)
         val p = Packet.Voice(
             originId = "a1b2c3d4", seqNum = 7, ttl = 4, timestampMs = 1765432100456L,
-            clipId = 3, frameNum = 12, isLast = true, opusData = opus
+            clipId = 3, frameNum = 12, isLast = true, opusData = opus, live = true
         )
         val decoded = PacketCodec.decode(PacketCodec.encode(p)) as Packet.Voice
         assertEquals(p.originId, decoded.originId)
@@ -32,7 +32,16 @@ class PacketCodecTest {
         assertEquals(3, decoded.clipId)
         assertEquals(12, decoded.frameNum)
         assertEquals(true, decoded.isLast)
+        assertEquals(true, decoded.live)
         assertArrayEquals(opus, decoded.opusData)
+    }
+
+    @Test
+    fun voiceLiveDefaultsFalseRoundTrip() {
+        val p = Packet.Voice("a", 1, 4, 0L, clipId = 1, frameNum = 0,
+            isLast = false, opusData = byteArrayOf(9))
+        val decoded = PacketCodec.decode(PacketCodec.encode(p)) as Packet.Voice
+        assertEquals(false, decoded.live)
     }
 
     @Test

@@ -36,7 +36,8 @@ sealed class Packet {
         val clipId: Int,
         val frameNum: Int,
         val isLast: Boolean,
-        val opusData: ByteArray
+        val opusData: ByteArray,
+        val live: Boolean = false        // part of a continuous live stream (play gapless, not one-shot)
     ) : Packet() {
         override val dedupKey get() = "$originId:v:$clipId:$frameNum"
         override fun withTtl(newTtl: Int) = copy(ttl = newTtl)
@@ -48,7 +49,8 @@ sealed class Packet {
             return originId == other.originId && seqNum == other.seqNum &&
                 ttl == other.ttl && timestampMs == other.timestampMs &&
                 clipId == other.clipId && frameNum == other.frameNum &&
-                isLast == other.isLast && opusData.contentEquals(other.opusData)
+                isLast == other.isLast && live == other.live &&
+                opusData.contentEquals(other.opusData)
         }
         override fun hashCode(): Int = dedupKey.hashCode()
     }

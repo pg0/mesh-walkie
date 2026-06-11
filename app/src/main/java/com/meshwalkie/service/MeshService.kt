@@ -16,6 +16,7 @@ import com.meshwalkie.util.L
 import com.meshwalkie.audio.PttRecorder
 import com.meshwalkie.audio.VadRecorder
 import com.meshwalkie.audio.VoicePlayer
+import com.meshwalkie.audio.LiveRecorder
 import com.meshwalkie.audio.VoiceSender
 import com.meshwalkie.core.ChannelCrypto
 import com.meshwalkie.core.CompositeTransport
@@ -67,6 +68,9 @@ class MeshService : Service() {
     private val recorder = PttRecorder()
     private val vad = VadRecorder()
     private var vadJob: Job? = null
+    private val liveRecorder = LiveRecorder()
+    private var liveJob: Job? = null
+    private val liveBroadcasting = AtomicBoolean(false)
 
     @Volatile private var myLat = 0.0
     @Volatile private var myLon = 0.0
@@ -199,6 +203,7 @@ class MeshService : Service() {
         MeshBus.leaveHostHandler = { disconnectClient() }
 
         MeshBus.pttHandler = { pressed -> onPtt(pressed) }
+        MeshBus.liveBroadcastHandler = { on -> onLiveBroadcast(on) }
         MeshBus.replayHandler = { voicePlayer.replayLast() }
         MeshBus.sendTextHandler = { text -> sendText(text) }
         MeshBus.dropWaypointHandler = { label -> dropWaypoint(label) }
@@ -357,9 +362,43 @@ class MeshService : Service() {
             .coerceIn(0, 100)
     }
 
+    /**
+     * Live broadcast: continuous capture -> per-chunk AMR -> live Voice packets.
+     * Receivers play them gapless via StreamPlayer. Half-duplex on the broadcaster
+     * (playback muted) so our speaker isn't recorded back. Babyfon = one phone
+     * broadcasts, others just listen.
+     */
+    private fun onLiveBroadcast(on: Boolean) {
+        if (on && Settings.vadEnabled.value) {
+            MeshBus.publishStatus("Turn off Auto-talk (VAD) before going live")
+            MeshBus.publishLiveBroadcasting(false)
+            return
+        }
+        if (on) {
+            if (!liveBroadcasting.compareAndSet(false, true)) return
+            MeshBus.publishLiveBroadcasting(true)
+            voicePlayer.setTransmitting(true)   // half-duplex: don't play incoming while live
+            liveJob = scope.launch(Dispatchers.IO) {
+                liveRecorder.run(audioSource = micSource()) { chunk ->
+                    if (currentLinks > 0) {
+                        voiceSender.sendClip(chunk, System.currentTimeMillis(),
+                            Settings.voiceBitrate.value, live = true)
+                    }
+                }
+            }
+        } else {
+            liveBroadcasting.set(false)
+            liveRecorder.stop()
+            voicePlayer.setTransmitting(false)
+            MeshBus.publishLiveBroadcasting(false)
+        }
+    }
+
     private fun onPtt(pressed: Boolean) {
         // VAD owns the mic when enabled; ignore manual PTT to avoid two AudioRecords.
         if (Settings.vadEnabled.value) return
+        if (liveBroadcasting.get()) return   // live owns the mic
+
         if (pressed) {
             if (pttHeld.getAndSet(true)) return
             scope.launch(Dispatchers.IO) {
@@ -534,6 +573,7 @@ class MeshService : Service() {
 
     override fun onDestroy() {
         MeshBus.pttHandler = null
+        MeshBus.liveBroadcastHandler = null
         MeshBus.replayHandler = null
         MeshBus.sendTextHandler = null
         MeshBus.dropWaypointHandler = null
@@ -544,6 +584,8 @@ class MeshService : Service() {
         MeshBus.leaveHostHandler = null
         voicePlayer.onClipPlayed = null
         pttHeld.set(false)
+        liveBroadcasting.set(false)
+        liveRecorder.stop()
         vad.stop()
         stopHost()
         disconnectClient()

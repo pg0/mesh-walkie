@@ -25,10 +25,11 @@ object PacketCodec {
             }
             is Packet.Voice -> {
                 require(p.opusData.size <= 65535) { "voice frame too large" }
-                ByteBuffer.allocate(header + 4 + 4 + 1 + 2 + p.opusData.size).also {
+                ByteBuffer.allocate(header + 4 + 4 + 1 + 1 + 2 + p.opusData.size).also {
                     it.put(TYPE_VOICE); putHeader(it, p, originBytes)
                     it.putInt(p.clipId); it.putInt(p.frameNum)
                     it.put(if (p.isLast) 1 else 0)
+                    it.put(if (p.live) 1 else 0)
                     it.putShort(p.opusData.size.toShort()); it.put(p.opusData)
                 }
             }
@@ -117,9 +118,10 @@ object PacketCodec {
                     val clipId = buf.getInt()
                     val frameNum = buf.getInt()
                     val isLast = buf.get() == 1.toByte()
+                    val live = buf.get() == 1.toByte()
                     val len = buf.getShort().toInt() and 0xFFFF
                     val data = ByteArray(len).also { buf.get(it) }
-                    Packet.Voice(originId, seqNum, ttl, ts, clipId, frameNum, isLast, data)
+                    Packet.Voice(originId, seqNum, ttl, ts, clipId, frameNum, isLast, data, live)
                 }
                 TYPE_PRESENCE -> {
                     val nameLen = buf.get().toInt() and 0xFF

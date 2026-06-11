@@ -105,6 +105,14 @@ object MeshBus {
 
     @Volatile var pttHandler: ((pressed: Boolean) -> Unit)? = null
 
+    /** Set by the service; UI toggles continuous live broadcast (babyfon / live mode). */
+    @Volatile var liveBroadcastHandler: ((on: Boolean) -> Unit)? = null
+
+    /** True while THIS device is live-broadcasting; drives the Live button state. */
+    private val _liveBroadcasting = MutableStateFlow(false)
+    val liveBroadcasting: StateFlow<Boolean> = _liveBroadcasting
+    fun publishLiveBroadcasting(on: Boolean) { _liveBroadcasting.value = on }
+
     /**
      * True while the mic is actually capturing a PTT clip. Goes false the moment
      * the recorder stops - including the auto-cut at the max-duration cap while

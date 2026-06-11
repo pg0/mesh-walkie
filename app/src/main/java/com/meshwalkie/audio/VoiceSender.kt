@@ -17,7 +17,12 @@ class VoiceSender(
     private var clipCounter = 0
 
     /** @return the clipId assigned to this clip (for delivery-receipt tracking). */
-    fun sendClip(pcm: ShortArray, nowMs: Long, bitrate: Int = OpusCodec.DEFAULT_BITRATE): Int {
+    fun sendClip(
+        pcm: ShortArray,
+        nowMs: Long,
+        bitrate: Int = OpusCodec.DEFAULT_BITRATE,
+        live: Boolean = false
+    ): Int {
         if (pcm.isEmpty()) return -1
         val clipId = clipCounter++
         val encoded = codec.encode(pcm, bitrate)
@@ -35,7 +40,7 @@ class VoiceSender(
                 Packet.Voice(
                     originId = originId, seqNum = nextSeq(), ttl = Packet.DEFAULT_TTL,
                     timestampMs = nowMs, clipId = clipId, frameNum = frameNum++,
-                    isLast = isLast, opusData = data
+                    isLast = isLast, opusData = data, live = live
                 )
             )
         }

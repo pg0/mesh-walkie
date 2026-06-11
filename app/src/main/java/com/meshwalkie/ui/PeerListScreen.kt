@@ -62,6 +62,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     val waypoints by MeshBus.waypoints.collectAsStateWithLifecycle()
     val target by MeshBus.target.collectAsStateWithLifecycle()
     val vadOn by Settings.vadEnabled.collectAsStateWithLifecycle()
+    val liveOn by MeshBus.liveBroadcasting.collectAsStateWithLifecycle()
     val hosts by MeshBus.hosts.collectAsStateWithLifecycle()
     val myHostIp by MeshBus.myHostIp.collectAsStateWithLifecycle()
     val joinedServer by MeshBus.joinedServer.collectAsStateWithLifecycle()
@@ -239,10 +240,19 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (!vadOn) {
+            if (liveOn) {
+                Text("🔴 LIVE", style = MaterialTheme.typography.titleMedium, color = Color(0xFFD32F2F))
+            } else if (!vadOn) {
                 PttButton(onPtt = { pressed -> MeshBus.pttHandler?.invoke(pressed) })
             } else {
                 Text("Auto-talk active", style = MaterialTheme.typography.titleMedium)
+            }
+            Column(
+                modifier = Modifier.align(Alignment.CenterStart),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Live", style = MaterialTheme.typography.labelMedium)
+                Switch(checked = liveOn, onCheckedChange = { MeshBus.liveBroadcastHandler?.invoke(it) })
             }
             Column(
                 modifier = Modifier.align(Alignment.CenterEnd),
