@@ -159,6 +159,10 @@ fun SettingsScreen(onBack: () -> Unit) {
             "Device ID: ${Settings.deviceId}",
             style = MaterialTheme.typography.bodySmall
         )
+        Text(
+            "v${com.meshwalkie.BuildConfig.VERSION_NAME} - built ${com.meshwalkie.BuildConfig.BUILD_TIME}",
+            style = MaterialTheme.typography.bodySmall
+        )
         Spacer(Modifier.height(24.dp))
     }
 }
