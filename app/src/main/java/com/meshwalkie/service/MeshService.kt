@@ -17,6 +17,7 @@ import com.meshwalkie.core.MeshEngine
 import com.meshwalkie.core.Packet
 import com.meshwalkie.core.PeerRegistry
 import com.meshwalkie.core.TransportRouter
+import com.meshwalkie.core.WaypointStore
 import com.meshwalkie.location.HeadingSource
 import com.meshwalkie.location.LocationSource
 import com.meshwalkie.nearby.NearbyTransport
@@ -45,6 +46,7 @@ class MeshService : Service() {
     private lateinit var voiceSender: VoiceSender
     private val registry = PeerRegistry()
     private val router = TransportRouter()
+    private val waypointStore = WaypointStore()
     private val locationSource by lazy { LocationSource(this) }
     private val headingSource by lazy { HeadingSource(this) }
     private val voicePlayer = VoicePlayer()
@@ -125,6 +127,7 @@ class MeshService : Service() {
         MeshBus.pttHandler = { pressed -> onPtt(pressed) }
         MeshBus.replayHandler = { voicePlayer.replayLast() }
         MeshBus.sendTextHandler = { text -> sendText(text) }
+        MeshBus.dropWaypointHandler = { label -> dropWaypoint(label) }
         voicePlayer.onClipPlayed = { senderId ->
             val name = registry.nameOf(senderId) ?: senderId
             MeshBus.publishLastVoice("Last message from $name")
@@ -160,6 +163,10 @@ class MeshService : Service() {
             if (packet is Packet.Voice) voicePlayer.onVoicePacket(packet)
             if (packet is Packet.Text) {
                 MeshBus.publishText("${packet.senderName}: ${packet.text}")
+                beep()
+            }
+            if (packet is Packet.Waypoint) {
+                waypointStore.add(packet.dedupKey, packet.senderName, packet.lat, packet.lon, packet.label)
                 beep()
             }
             publishPeers()
@@ -229,6 +236,19 @@ class MeshService : Service() {
         // Distance/bearing arrows need our own fix.
         if (!hasFix) return
         MeshBus.publishPeers(registry.snapshot(myLat, myLon, now))
+        MeshBus.publishWaypoints(waypointStore.snapshot(myLat, myLon))
+    }
+
+    private fun dropWaypoint(label: String) {
+        if (!hasFix) return
+        val clean = label.trim().ifEmpty { "waypoint" }
+        val p = Packet.Waypoint(
+            originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
+            System.currentTimeMillis(), Settings.displayName.value, myLat, myLon, clean
+        )
+        engine.send(p)
+        waypointStore.add(p.dedupKey, p.senderName, myLat, myLon, clean)
+        publishPeers()
     }
 
     private fun statusText(links: Int): String = when (links) {
@@ -253,6 +273,7 @@ class MeshService : Service() {
         MeshBus.pttHandler = null
         MeshBus.replayHandler = null
         MeshBus.sendTextHandler = null
+        MeshBus.dropWaypointHandler = null
         voicePlayer.onClipPlayed = null
         pttHeld.set(false)
         locationSource.stop()

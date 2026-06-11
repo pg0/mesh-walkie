@@ -2,6 +2,7 @@ package com.meshwalkie.service
 
 import com.meshwalkie.core.PeerRosterEntry
 import com.meshwalkie.core.PeerView
+import com.meshwalkie.core.WaypointView
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -20,6 +21,17 @@ object MeshBus {
     /** My own (lat, lon) once fixed, for the map view. Null until first fix. */
     private val _myLocation = MutableStateFlow<Pair<Double, Double>?>(null)
     val myLocation: StateFlow<Pair<Double, Double>?> = _myLocation
+
+    /** Dropped waypoints with distance/bearing from me. */
+    private val _waypoints = MutableStateFlow<List<WaypointView>>(emptyList())
+    val waypoints: StateFlow<List<WaypointView>> = _waypoints
+
+    /** A personal navigation target (lat, lon) set by tapping the map. Null = none. */
+    private val _target = MutableStateFlow<Pair<Double, Double>?>(null)
+    val target: StateFlow<Pair<Double, Double>?> = _target
+
+    fun setTarget(lat: Double, lon: Double) { _target.value = lat to lon }
+    fun clearTarget() { _target.value = null }
 
     private val _myHeading = MutableStateFlow(0f)
     val myHeading: StateFlow<Float> = _myHeading
@@ -46,6 +58,9 @@ object MeshBus {
 
     @Volatile var pttHandler: ((pressed: Boolean) -> Unit)? = null
 
+    /** Set by the service; UI calls it to drop a waypoint at my position. */
+    @Volatile var dropWaypointHandler: ((label: String) -> Unit)? = null
+
     /** Set by the service; UI calls it to replay the last received clip. */
     @Volatile var replayHandler: (() -> Unit)? = null
 
@@ -55,6 +70,7 @@ object MeshBus {
     fun publishPeers(views: List<PeerView>) { _peers.value = views }
     fun publishRoster(entries: List<PeerRosterEntry>) { _roster.value = entries }
     fun publishMyLocation(lat: Double, lon: Double) { _myLocation.value = lat to lon }
+    fun publishWaypoints(list: List<WaypointView>) { _waypoints.value = list }
     fun publishHeading(deg: Float) { _myHeading.value = deg }
     fun publishWaitingForGps(waiting: Boolean) { _waitingForGps.value = waiting }
     fun publishLinkCount(n: Int) { _linkCount.value = n }

@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,8 +32,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshwalkie.core.Display
 import com.meshwalkie.core.Freshness
+import com.meshwalkie.core.GeoMath
 import com.meshwalkie.core.PeerRosterEntry
 import com.meshwalkie.core.PeerView
+import com.meshwalkie.core.WaypointView
 import com.meshwalkie.service.MeshBus
 
 @Composable
@@ -46,7 +50,11 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     val lastVoice by MeshBus.lastVoice.collectAsStateWithLifecycle()
     val messages by MeshBus.messages.collectAsStateWithLifecycle()
     val myLoc by MeshBus.myLocation.collectAsStateWithLifecycle()
+    val waypoints by MeshBus.waypoints.collectAsStateWithLifecycle()
+    val target by MeshBus.target.collectAsStateWithLifecycle()
     var viewMode by remember { mutableIntStateOf(0) }   // 0 list, 1 radar, 2 map
+    var showType by remember { mutableStateOf(false) }
+    var showWp by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
@@ -55,9 +63,19 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Mesh Walkie", style = MaterialTheme.typography.headlineSmall)
-            Row {
-                TextButton(onClick = onOpenSettings) { Text("Settings") }
-                TextButton(onClick = onExit) { Text("Exit") }
+            Box {
+                var menuOpen by remember { mutableStateOf(false) }
+                TextButton(onClick = { menuOpen = true }) { Text("⋮") }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Settings") },
+                        onClick = { menuOpen = false; onOpenSettings() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Exit") },
+                        onClick = { menuOpen = false; onExit() }
+                    )
+                }
             }
         }
         Text(status, style = MaterialTheme.typography.bodyMedium)
@@ -80,8 +98,22 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
 
         when (viewMode) {
             1 -> RadarView(peers, heading, Modifier.weight(1f).fillMaxWidth())
-            2 -> MapScreen(peers, myLoc, Modifier.weight(1f).fillMaxWidth())
+            2 -> MapScreen(
+                peers, myLoc, waypoints, target,
+                onSetTarget = { la, lo -> MeshBus.setTarget(la, lo) },
+                Modifier.weight(1f).fillMaxWidth()
+            )
             else -> LazyColumn(modifier = Modifier.weight(1f)) {
+            // Pinned navigation target on top.
+            val t = target
+            val ml = myLoc
+            if (t != null && ml != null) {
+                item { TargetRow(t, ml, heading) { MeshBus.clearTarget() } }
+            }
+            // Shared waypoints (rally points).
+            items(waypoints, key = { "w_${it.id}" }) { wp ->
+                WaypointRow(wp, heading)
+            }
             // Full arrow rows when positions are known.
             items(peers, key = { "p_${it.id}" }) { peer ->
                 PeerRow(peer = peer, myHeadingDeg = heading)
@@ -115,13 +147,15 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             }
         }
         if (messages.isNotEmpty()) {
+            // reverseLayout = newest pinned at the bottom and visible
             LazyColumn(
+                reverseLayout = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 120.dp)
                     .padding(top = 8.dp)
             ) {
-                items(messages) { m ->
+                items(messages.asReversed()) { m ->
                     Text("💬 $m", style = MaterialTheme.typography.bodyMedium)
                 }
             }
@@ -137,12 +171,36 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             }
         }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             QuickTextWheel(onSend = { MeshBus.sendTextHandler?.invoke(it) })
+            TextButton(onClick = { showType = true }) { Text("Type") }
+            TextButton(onClick = { showWp = true }) { Text("Drop WP") }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
             PttButton(onPtt = { pressed -> MeshBus.pttHandler?.invoke(pressed) })
+        }
+
+        if (showType) {
+            TextInputDialog(
+                title = "Send message",
+                confirmLabel = "Send",
+                onConfirm = { MeshBus.sendTextHandler?.invoke(it) },
+                onDismiss = { showType = false }
+            )
+        }
+        if (showWp) {
+            TextInputDialog(
+                title = "Drop waypoint here",
+                confirmLabel = "Drop",
+                onConfirm = { MeshBus.dropWaypointHandler?.invoke(it) },
+                onDismiss = { showWp = false }
+            )
         }
     }
 }
@@ -171,6 +229,52 @@ fun PeerRow(peer: PeerView, myHeadingDeg: Float) {
             Text(nameLine + batt, style = MaterialTheme.typography.bodyMedium)
         }
         FreshnessDot(peer.freshness)
+    }
+}
+
+@Composable
+fun TargetRow(target: Pair<Double, Double>, myLoc: Pair<Double, Double>, myHeadingDeg: Float, onClear: () -> Unit) {
+    val dist = GeoMath.distanceMeters(myLoc.first, myLoc.second, target.first, target.second)
+    val bearing = GeoMath.bearingDegrees(myLoc.first, myLoc.second, target.first, target.second)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+    ) {
+        ArrowIcon(
+            rotationDeg = Display.arrowRotation(bearing, myHeadingDeg.toDouble()),
+            ball = dist < 5.0
+        )
+        Spacer(modifier = Modifier.size(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "🎯 TARGET  ${Display.formatDistance(dist)} ${Display.compassLabel(bearing)}",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text("tap the map to move it", style = MaterialTheme.typography.bodySmall)
+        }
+        TextButton(onClick = onClear) { Text("✕") }
+    }
+}
+
+@Composable
+fun WaypointRow(wp: WaypointView, myHeadingDeg: Float) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+    ) {
+        ArrowIcon(
+            rotationDeg = Display.arrowRotation(wp.bearingDeg, myHeadingDeg.toDouble()),
+            ball = wp.distanceMeters < 5.0
+        )
+        Spacer(modifier = Modifier.size(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "📍 ${wp.label}  ${Display.formatDistance(wp.distanceMeters)} ${Display.compassLabel(wp.bearingDeg)}",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text("by ${wp.senderName}", style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
 

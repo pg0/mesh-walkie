@@ -8,21 +8,30 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.meshwalkie.core.Display
 import com.meshwalkie.core.PeerView
+import com.meshwalkie.core.WaypointView
 import org.osmdroid.config.Configuration
+import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 
 /**
- * Real map view via osmdroid (OpenStreetMap). No API key. Tiles load over the
- * network now and osmdroid caches them, so a pre-browsed area still renders
- * offline in the field. Plots me + every peer with a known position.
+ * Real map via osmdroid (OpenStreetMap, no API key, tiles cache for offline).
+ * Plots me, peers, waypoints, and a tap-set navigation target. Tap anywhere to
+ * set the target.
  */
 @Composable
-fun MapScreen(peers: List<PeerView>, myLoc: Pair<Double, Double>?, modifier: Modifier = Modifier) {
+fun MapScreen(
+    peers: List<PeerView>,
+    myLoc: Pair<Double, Double>?,
+    waypoints: List<WaypointView>,
+    target: Pair<Double, Double>?,
+    onSetTarget: (Double, Double) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val ctx = LocalContext.current
-    // Center only once so GPS updates don't keep yanking the map back.
     val centered = remember { booleanArrayOf(false) }
 
     AndroidView(
@@ -40,10 +49,16 @@ fun MapScreen(peers: List<PeerView>, myLoc: Pair<Double, Double>?, modifier: Mod
         },
         update = { map ->
             map.overlays.clear()
+            // tap to set target
+            map.overlays.add(MapEventsOverlay(object : MapEventsReceiver {
+                override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
+                    onSetTarget(p.latitude, p.longitude); return true
+                }
+                override fun longPressHelper(p: GeoPoint): Boolean = false
+            }))
             myLoc?.let { (lat, lon) ->
                 map.overlays.add(Marker(map).apply {
-                    position = GeoPoint(lat, lon)
-                    title = "You"
+                    position = GeoPoint(lat, lon); title = "You"
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                 })
             }
@@ -53,13 +68,20 @@ fun MapScreen(peers: List<PeerView>, myLoc: Pair<Double, Double>?, modifier: Mod
                     title = "${p.name}  ${Display.formatDistance(p.distanceMeters)}"
                 })
             }
+            waypoints.forEach { w ->
+                map.overlays.add(Marker(map).apply {
+                    position = GeoPoint(w.lat, w.lon); title = "📍 ${w.label}"
+                })
+            }
+            target?.let { (lat, lon) ->
+                map.overlays.add(Marker(map).apply {
+                    position = GeoPoint(lat, lon); title = "🎯 Target"
+                })
+            }
             if (!centered[0]) {
                 val c0 = myLoc?.let { GeoPoint(it.first, it.second) }
                     ?: peers.firstOrNull()?.let { GeoPoint(it.lat, it.lon) }
-                if (c0 != null) {
-                    map.controller.setCenter(c0)
-                    centered[0] = true
-                }
+                if (c0 != null) { map.controller.setCenter(c0); centered[0] = true }
             }
             map.invalidate()
         }
