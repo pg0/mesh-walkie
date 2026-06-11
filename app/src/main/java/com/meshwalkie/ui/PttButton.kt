@@ -11,6 +11,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meshwalkie.service.Settings
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,12 +24,15 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun PttButton(onPtt: (pressed: Boolean) -> Unit, modifier: Modifier = Modifier) {
     var held by remember { mutableStateOf(false) }
+    val night by Settings.nightMode.collectAsStateWithLifecycle()
+    val idleColor = if (night) Color(0xFF5A0A0A) else Color(0xFF388E3C)   // dark red vs green
+    val heldColor = if (night) Color(0xFFD0342C) else Color(0xFFD32F2F)
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .size(120.dp)
             .background(
-                color = if (held) Color(0xFFD32F2F) else Color(0xFF388E3C),
+                color = if (held) heldColor else idleColor,
                 shape = CircleShape
             )
             .pointerInput(Unit) {
