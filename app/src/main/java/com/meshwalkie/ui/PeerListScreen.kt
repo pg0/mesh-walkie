@@ -66,6 +66,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     val myHostIp by MeshBus.myHostIp.collectAsStateWithLifecycle()
     val joinedServer by MeshBus.joinedServer.collectAsStateWithLifecycle()
     val hostClients by MeshBus.hostClientCount.collectAsStateWithLifecycle()
+    val rtt by MeshBus.rtt.collectAsStateWithLifecycle()
     val hostIds = hosts.map { it.id }.toSet()
     var viewMode by remember { mutableIntStateOf(0) }   // 0 list, 1 radar, 2 map
     var showType by remember { mutableStateOf(false) }
@@ -148,7 +149,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             }
             // Users next (full arrow rows when positions are known).
             items(peers, key = { "p_${it.id}" }) { peer ->
-                PeerRow(peer = peer, myHeadingDeg = heading, isHost = peer.id in hostIds)
+                PeerRow(peer = peer, myHeadingDeg = heading, isHost = peer.id in hostIds, rttMs = rtt[peer.id])
             }
             // Then shared waypoints (rally points).
             items(waypoints, key = { "w_${it.id}" }) { wp ->
@@ -167,7 +168,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                     )
                 }
                 items(rosterOnly, key = { "r_${it.id}" }) { entry ->
-                    RosterRow(entry, isHost = entry.id in hostIds)
+                    RosterRow(entry, isHost = entry.id in hostIds, rttMs = rtt[entry.id])
                 }
             }
             if (peers.isEmpty() && roster.isEmpty()) {
@@ -192,10 +193,9 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                     .padding(top = 8.dp)
             ) {
                 items(messages.asReversed()) { (text, atMs) ->
-                    Text(
-                        "💬 $text  ·  ${Display.formatAge(nowTick - atMs)} ago",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    val age = nowTick - atMs
+                    val label = if (age >= 0) "💬 $text  ·  ${Display.formatAge(age)} ago" else "💬 $text"
+                    Text(label, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -271,7 +271,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
 }
 
 @Composable
-fun PeerRow(peer: PeerView, myHeadingDeg: Float, isHost: Boolean = false) {
+fun PeerRow(peer: PeerView, myHeadingDeg: Float, isHost: Boolean = false, rttMs: Long? = null) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
@@ -293,6 +293,7 @@ fun PeerRow(peer: PeerView, myHeadingDeg: Float, isHost: Boolean = false) {
             val batt = if (peer.batteryPct in 0..100) "  🔋${peer.batteryPct}%" else ""
             val host = if (isHost) "  🌐" else ""
             Text(nameLine + batt + host, style = MaterialTheme.typography.bodyMedium)
+            rttMs?.let { Text(Display.signalFromRtt(it), style = MaterialTheme.typography.bodySmall) }
         }
         FreshnessDot(peer.freshness)
     }
@@ -355,7 +356,7 @@ fun WaypointRow(wp: WaypointView, myHeadingDeg: Float, onDelete: () -> Unit) {
 }
 
 @Composable
-fun RosterRow(entry: PeerRosterEntry, isHost: Boolean = false) {
+fun RosterRow(entry: PeerRosterEntry, isHost: Boolean = false, rttMs: Long? = null) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
@@ -369,6 +370,7 @@ fun RosterRow(entry: PeerRosterEntry, isHost: Boolean = false) {
                 "$offline$proximity - ID ${entry.id}$batt",
                 style = MaterialTheme.typography.bodySmall
             )
+            rttMs?.let { Text(Display.signalFromRtt(it), style = MaterialTheme.typography.bodySmall) }
         }
         FreshnessDot(entry.freshness)
     }

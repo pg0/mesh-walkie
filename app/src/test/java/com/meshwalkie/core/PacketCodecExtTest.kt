@@ -39,6 +39,14 @@ class PacketCodecExtTest {
     }
 
     @Test
+    fun pingRoundTrips() {
+        val ping = Packet.Ping("a1b2", 9, 4, 7L, nonce = 12345, replyTo = "")
+        assertEquals(ping, PacketCodec.decode(PacketCodec.encode(ping)))
+        val pong = Packet.Ping("c3d4", 10, 4, 8L, nonce = 12345, replyTo = "a1b2")
+        assertEquals(pong, PacketCodec.decode(PacketCodec.encode(pong)))
+    }
+
+    @Test
     fun emptyTextRoundTrips() {
         val p = Packet.Text("a1b2", 1, 4, 1L, senderName = "X", text = "")
         assertEquals(p, PacketCodec.decode(PacketCodec.encode(p)))
