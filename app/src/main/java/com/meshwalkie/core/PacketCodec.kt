@@ -11,7 +11,6 @@ object PacketCodec {
     private const val TYPE_TEXT: Byte = 5
     private const val TYPE_ACK: Byte = 6
     private const val TYPE_HOST: Byte = 7
-    private const val TYPE_PING: Byte = 8
 
     fun encode(p: Packet): ByteArray {
         val originBytes = p.originId.toByteArray(Charsets.UTF_8)
@@ -70,15 +69,6 @@ object PacketCodec {
                     it.put(TYPE_ACK); putHeader(it, p, originBytes)
                     it.put(refBytes.size.toByte()); it.put(refBytes)
                     it.putInt(p.refClipId)
-                }
-            }
-            is Packet.Ping -> {
-                val replyBytes = p.replyTo.toByteArray(Charsets.UTF_8)
-                require(replyBytes.size <= 255) { "replyTo too long" }
-                ByteBuffer.allocate(header + 4 + 1 + replyBytes.size).also {
-                    it.put(TYPE_PING); putHeader(it, p, originBytes)
-                    it.putInt(p.nonce)
-                    it.put(replyBytes.size.toByte()); it.put(replyBytes)
                 }
             }
             is Packet.Host -> {
@@ -143,12 +133,6 @@ object PacketCodec {
                     val refLen = buf.get().toInt() and 0xFF
                     val refOrigin = String(ByteArray(refLen).also { buf.get(it) }, Charsets.UTF_8)
                     Packet.Ack(originId, seqNum, ttl, ts, refOrigin, buf.getInt())
-                }
-                TYPE_PING -> {
-                    val nonce = buf.getInt()
-                    val rlen = buf.get().toInt() and 0xFF
-                    val replyTo = String(ByteArray(rlen).also { buf.get(it) }, Charsets.UTF_8)
-                    Packet.Ping(originId, seqNum, ttl, ts, nonce, replyTo)
                 }
                 TYPE_HOST -> {
                     val nameLen = buf.get().toInt() and 0xFF

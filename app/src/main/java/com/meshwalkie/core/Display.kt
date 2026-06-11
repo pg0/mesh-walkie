@@ -21,14 +21,6 @@ object Display {
         if (meters.roundToInt() < 1000) "${meters.roundToInt()} m"
         else String.format(Locale.US, "%.1f km", meters / 1000.0)
 
-    /** Signal proxy from round-trip latency: fewer ms = stronger link. */
-    fun signalFromRtt(ms: Long): String = when {
-        ms < 120 -> "📶 ▮▮▮ ${ms}ms"
-        ms < 400 -> "📶 ▮▮ ${ms}ms"
-        ms < 1500 -> "📶 ▮ ${ms}ms"
-        else -> "📶 ▯ ${ms}ms"
-    }
-
     /** Relative age: "12s" / "3m" / "1h". */
     fun formatAge(ms: Long): String = when {
         ms < 60_000L -> "${ms / 1000L}s"

@@ -78,8 +78,6 @@ class MeshService : Service() {
     @Volatile private var everConnected = false   // have we ever had a peer this session?
     @Volatile private var lastSentClipId = -1
     private val acksByClip = HashMap<Int, MutableSet<String>>()   // refClipId -> ackers
-    private val rttByPeer = HashMap<String, Long>()               // originId -> last RTT ms
-    private val pingSentAt = HashMap<Int, Long>()                 // nonce -> send time
     private val outbox = ArrayDeque<ShortArray>()   // voice clips recorded while offline
     private val started = AtomicBoolean(false)
 
@@ -216,7 +214,6 @@ class MeshService : Service() {
                     NetUtil.bestHostAddress()?.let { ip -> announceHost(ip) }
                     MeshBus.publishHostClientCount(it.clientCount)
                 }
-                sendPing()
                 publishPeers()
                 delay(10_000L)
             }
@@ -245,7 +242,6 @@ class MeshService : Service() {
                 waypointStore.add(packet.dedupKey, packet.senderName, packet.lat, packet.lon, packet.label)
                 beep()
             }
-            if (packet is Packet.Ping) handlePing(packet)
             if (packet is Packet.Host) onHostAnnounced(packet)
             if (packet is Packet.Ack && packet.refOriginId == originId) {
                 val ackers = acksByClip.getOrPut(packet.refClipId) { mutableSetOf() }
@@ -387,36 +383,6 @@ class MeshService : Service() {
         if (!hasFix) return
         MeshBus.publishPeers(registry.snapshot(myLat, myLon, now))
         MeshBus.publishWaypoints(waypointStore.snapshot(myLat, myLon))
-    }
-
-    private fun handlePing(p: Packet.Ping) {
-        if (p.replyTo.isEmpty()) {
-            // a ping: reply (pong) to the sender with the same nonce
-            engine.send(
-                Packet.Ping(
-                    originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
-                    System.currentTimeMillis(), p.nonce, p.originId
-                )
-            )
-        } else if (p.replyTo == originId) {
-            // a pong for one of my pings: RTT = now - send time
-            val sent = pingSentAt[p.nonce] ?: return
-            rttByPeer[p.originId] = System.currentTimeMillis() - sent
-            MeshBus.publishRtt(rttByPeer.toMap())
-        }
-    }
-
-    private fun sendPing() {
-        if (currentLinks == 0) return
-        val nonce = seq.incrementAndGet()
-        pingSentAt[nonce] = System.currentTimeMillis()
-        if (pingSentAt.size > 64) pingSentAt.keys.toList().take(pingSentAt.size - 64).forEach { pingSentAt.remove(it) }
-        engine.send(
-            Packet.Ping(
-                originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
-                System.currentTimeMillis(), nonce, ""
-            )
-        )
     }
 
     private fun onHostAnnounced(p: Packet.Host) {

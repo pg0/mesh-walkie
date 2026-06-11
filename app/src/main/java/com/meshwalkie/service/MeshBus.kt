@@ -59,11 +59,6 @@ object MeshBus {
     val hostClientCount: StateFlow<Int> = _hostClientCount
     fun publishHostClientCount(n: Int) { _hostClientCount.value = n }
 
-    /** Round-trip latency per peer id (ms) - a signal-quality proxy. */
-    private val _rtt = MutableStateFlow<Map<String, Long>>(emptyMap())
-    val rtt: StateFlow<Map<String, Long>> = _rtt
-    fun publishRtt(map: Map<String, Long>) { _rtt.value = map }
-
     /** Set by the service; UI calls it to join a host at ip:port. */
     @Volatile var joinHandler: ((ip: String, port: Int) -> Unit)? = null
     /** Set by the service; UI calls it to leave the joined host. */

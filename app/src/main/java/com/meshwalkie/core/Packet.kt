@@ -91,19 +91,6 @@ sealed class Packet {
         override fun withTtl(newTtl: Int) = copy(ttl = newTtl)
     }
 
-    /** Ping/pong for round-trip latency (signal proxy). replyTo="" = ping; else = pong to that id. */
-    data class Ping(
-        override val originId: String,
-        override val seqNum: Int,
-        override val ttl: Int,
-        override val timestampMs: Long,
-        val nonce: Int,
-        val replyTo: String
-    ) : Packet() {
-        override val dedupKey get() = "$originId:$seqNum"
-        override fun withTtl(newTtl: Int) = copy(ttl = newTtl)
-    }
-
     /** Announces an in-app relay host reachable over the internet at [ip]:[port]. */
     data class Host(
         override val originId: String,
