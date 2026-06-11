@@ -31,9 +31,13 @@ import com.meshwalkie.service.MeshBus
 fun PeerListScreen() {
     val peers by MeshBus.peers.collectAsStateWithLifecycle()
     val heading by MeshBus.myHeading.collectAsStateWithLifecycle()
+    val waitingForGps by MeshBus.waitingForGps.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Mesh Walkie", style = MaterialTheme.typography.headlineSmall)
+        if (waitingForGps) {
+            Text("Warte auf GPS-Fix", style = MaterialTheme.typography.bodyMedium)
+        }
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(peers, key = { it.id }) { peer ->
                 PeerRow(peer = peer, myHeadingDeg = heading)

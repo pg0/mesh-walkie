@@ -3,10 +3,13 @@ package com.meshwalkie.service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import com.meshwalkie.audio.PttRecorder
 import com.meshwalkie.audio.VoicePlayer
 import com.meshwalkie.audio.VoiceSender
@@ -52,19 +55,41 @@ class MeshService : Service() {
     @Volatile private var myHeading = 0f
     @Volatile private var hasFix = false
 
+    private val started = AtomicBoolean(false)
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(
-            NOTIFICATION_ID,
-            buildNotification(),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
-                or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                or ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
-        )
+        // FGS start can throw on API 31+ (e.g. START_STICKY restart after the
+        // location permission was revoked -> declared location FGS type has no
+        // backing permission). An uncaught throw here is fatal per project
+        // policy, so swallow it and stop cleanly instead.
+        try {
+            startForeground(
+                NOTIFICATION_ID,
+                buildNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                    or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                    or ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+            )
+        } catch (e: Exception) {
+            // ForegroundServiceStartNotAllowedException (API 31+) and
+            // SecurityException are both subclasses of Exception; catch broadly.
+            if (Build.VERSION.SDK_INT >= 31 && e is ForegroundServiceStartNotAllowedException) {
+                Log.w(TAG, "startForeground not allowed, stopping", e)
+            } else {
+                Log.w(TAG, "startForeground failed, stopping", e)
+            }
+            stopSelf()
+            return START_NOT_STICKY
+        }
         startMesh()
         return START_STICKY
     }
 
     private fun startMesh() {
+        // START_STICKY redelivers with a null intent after a process kill; guard
+        // so the transport/location/heading/heartbeat are wired at most once per
+        // service instance (a second wiring would leak the first).
+        if (!started.compareAndSet(false, true)) return
         originId = DeviceId.get(this)
         transport = NearbyTransport(this, roomCode = "field1", deviceName = DeviceId.displayName(this))
         engine = MeshEngine(transport)
@@ -83,6 +108,7 @@ class MeshService : Service() {
             myLat = fix.latitude
             myLon = fix.longitude
             hasFix = true
+            MeshBus.publishWaitingForGps(false)
             engine.send(
                 Packet.Position(
                     originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
@@ -159,5 +185,6 @@ class MeshService : Service() {
     private companion object {
         const val NOTIFICATION_ID = 1
         const val CHANNEL_ID = "mesh"
+        const val TAG = "MeshService"
     }
 }
