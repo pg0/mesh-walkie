@@ -424,7 +424,9 @@ class MeshService : Service() {
     }
 
     private fun dropWaypointAt(lat: Double, lon: Double, label: String) {
-        val clean = label.trim().ifEmpty { "waypoint" }
+        val clean = label.trim().ifEmpty {
+            java.time.LocalDateTime.now().withNano(0).toString()   // ISO datetime
+        }
         val p = Packet.Waypoint(
             originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
             System.currentTimeMillis(), Settings.displayName.value, lat, lon, clean

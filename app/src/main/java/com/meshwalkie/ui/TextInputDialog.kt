@@ -20,7 +20,8 @@ fun TextInputDialog(
     title: String,
     confirmLabel: String,
     onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    allowEmpty: Boolean = false
 ) {
     var value by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
@@ -37,9 +38,10 @@ fun TextInputDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = { if (value.isNotBlank()) onConfirm(value.trim()); onDismiss() }) {
-                Text(confirmLabel)
-            }
+            TextButton(onClick = {
+                if (allowEmpty || value.isNotBlank()) onConfirm(value.trim())
+                onDismiss()
+            }) { Text(confirmLabel) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )

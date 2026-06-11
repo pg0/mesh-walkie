@@ -236,7 +236,8 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                 title = "Drop waypoint here",
                 confirmLabel = "Drop",
                 onConfirm = { MeshBus.dropWaypointHandler?.invoke(it) },
-                onDismiss = { showWp = false }
+                onDismiss = { showWp = false },
+                allowEmpty = true   // empty -> service uses an ISO datetime label
             )
         }
         if (showServers) {
