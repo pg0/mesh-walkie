@@ -6,6 +6,8 @@ build/
 .gradle/
 *.apk
 *.keystore
+*.jks
+keystore.properties
 local.properties
 .idea/
 .claude/settings.local.json
