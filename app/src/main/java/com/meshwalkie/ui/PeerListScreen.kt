@@ -107,7 +107,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
         }
 
         when (viewMode) {
-            1 -> RadarView(peers, heading, Modifier.weight(1f).fillMaxWidth().clipToBounds())
+            1 -> RadarView(peers, waypoints, heading, Modifier.weight(1f).fillMaxWidth().clipToBounds())
             2 -> MapScreen(
                 peers, myLoc, waypoints, target, breadcrumbs,
                 onSetTarget = { la, lo -> MeshBus.setTarget(la, lo) },

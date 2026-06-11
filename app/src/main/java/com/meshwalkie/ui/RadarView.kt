@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import com.meshwalkie.core.Display
 import com.meshwalkie.core.Freshness
 import com.meshwalkie.core.PeerView
+import com.meshwalkie.core.WaypointView
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
@@ -23,7 +24,12 @@ import kotlin.math.sin
  * to the farthest peer (min 200 m). No map provider, no API key, works offline.
  */
 @Composable
-fun RadarView(peers: List<PeerView>, myHeadingDeg: Float, modifier: Modifier = Modifier) {
+fun RadarView(
+    peers: List<PeerView>,
+    waypoints: List<WaypointView>,
+    myHeadingDeg: Float,
+    modifier: Modifier = Modifier
+) {
     val gridArgb = Color(0xFF4A5A5E).toArgb()
     val labelArgb = Color(0xFFB9C6C9).toArgb()
     val meColor = Color(0xFF4FC3F7)
@@ -48,7 +54,10 @@ fun RadarView(peers: List<PeerView>, myHeadingDeg: Float, modifier: Modifier = M
         val cy = size.height / 2f
         val maxR = min(cx, cy) * 0.88f
 
-        val farthest = peers.maxOfOrNull { it.distanceMeters } ?: 0.0
+        val farthest = maxOf(
+            peers.maxOfOrNull { it.distanceMeters } ?: 0.0,
+            waypoints.maxOfOrNull { it.distanceMeters } ?: 0.0
+        )
         val maxDist = maxOf(farthest, 200.0)
 
         // range rings + distance labels
@@ -89,6 +98,22 @@ fun RadarView(peers: List<PeerView>, myHeadingDeg: Float, modifier: Modifier = M
             drawContext.canvas.nativeCanvas.drawText(
                 "${p.name} ${Display.formatDistance(p.distanceMeters)}",
                 x + 20f, y + 10f, labelPaint
+            )
+        }
+
+        // waypoints: amber squares, distinct from round peer dots
+        waypoints.forEach { w ->
+            val angle = Math.toRadians(w.bearingDeg - myHeadingDeg)
+            val rr = (min(w.distanceMeters, maxDist) / maxDist).toFloat() * maxR
+            val x = cx + (rr * sin(angle)).toFloat()
+            val y = cy - (rr * cos(angle)).toFloat()
+            drawRect(
+                color = Color(0xFFFFB300),
+                topLeft = Offset(x - 13f, y - 13f),
+                size = androidx.compose.ui.geometry.Size(26f, 26f)
+            )
+            drawContext.canvas.nativeCanvas.drawText(
+                "📍 ${w.label}", x + 20f, y + 10f, labelPaint
             )
         }
     }

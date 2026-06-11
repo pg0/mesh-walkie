@@ -1,3 +1,6 @@
+import java.text.SimpleDateFormat
+import java.util.Date
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -15,7 +18,7 @@ android {
         versionName = "0.1.0"
         buildConfigField(
             "String", "BUILD_TIME",
-            "\"" + java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(java.util.Date()) + "\""
+            "\"" + SimpleDateFormat("yyyy-MM-dd HH:mm").format(Date()) + "\""
         )
     }
 
