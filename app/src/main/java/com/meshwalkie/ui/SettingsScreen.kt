@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import android.content.Intent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -37,8 +38,6 @@ import com.meshwalkie.service.Settings
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
-    // System back returns to the main screen instead of closing the app.
-    BackHandler { onBack() }
 
     val dark by Settings.darkMode.collectAsStateWithLifecycle()
     val vadOn by Settings.vadEnabled.collectAsStateWithLifecycle()
@@ -62,14 +61,18 @@ fun SettingsScreen(onBack: () -> Unit) {
     var groupField by remember { mutableStateOf(savedGroup) }
     var quickTextsField by remember { mutableStateOf(savedQuickTexts.joinToString("\n")) }
 
-    val save = {
+    // Persist all typed fields. Text fields auto-save on focus loss; this also
+    // runs on Back in case a field is still focused when the screen leaves.
+    // setGroupCode returns true only when changed; the service then rejoins.
+    val persistAll = {
         Settings.setDisplayName(nameField)
         Settings.setQuickTexts(quickTextsField.split("\n"))
-        // setGroupCode returns true when it changed; the service observes
-        // the flow and rejoins the new mesh automatically.
         Settings.setGroupCode(groupField)
-        onBack()
     }
+    val leave = { persistAll(); onBack() }
+
+    // System back returns to the main screen (saving first) instead of closing.
+    BackHandler { leave() }
 
     Column(
         modifier = Modifier
@@ -83,30 +86,39 @@ fun SettingsScreen(onBack: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Settings", style = MaterialTheme.typography.headlineSmall)
-            Row {
-                TextButton(onClick = onBack) { Text("Back") }
-                Button(onClick = save) { Text("Save") }
-            }
+            Button(onClick = leave) { Text("Back") }
         }
 
         Spacer(Modifier.height(24.dp))
 
+        var nameWasFocused by remember { mutableStateOf(false) }
         Text("Name", style = MaterialTheme.typography.labelLarge)
         OutlinedTextField(
             value = nameField,
             onValueChange = { nameField = it },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { st ->
+                    if (st.isFocused) nameWasFocused = true
+                    else if (nameWasFocused) { Settings.setDisplayName(nameField); nameWasFocused = false }
+                }
         )
 
         Spacer(Modifier.height(20.dp))
 
+        var groupWasFocused by remember { mutableStateOf(false) }
         Text("Channel", style = MaterialTheme.typography.labelLarge)
         OutlinedTextField(
             value = groupField,
             onValueChange = { groupField = it },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { st ->
+                    if (st.isFocused) groupWasFocused = true
+                    else if (groupWasFocused) { Settings.setGroupCode(groupField); groupWasFocused = false }
+                }
         )
         Text(
             "Everyone on the same channel hears each other. Pick a shared name (e.g. team-alpha) for a private channel.",
@@ -120,12 +132,18 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(20.dp))
 
+        var quickWasFocused by remember { mutableStateOf(false) }
         Text("Quick texts (one per line, max 8)", style = MaterialTheme.typography.labelLarge)
         OutlinedTextField(
             value = quickTextsField,
             onValueChange = { quickTextsField = it },
             singleLine = false,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { st ->
+                    if (st.isFocused) quickWasFocused = true
+                    else if (quickWasFocused) { Settings.setQuickTexts(quickTextsField.split("\n")); quickWasFocused = false }
+                }
         )
 
         Spacer(Modifier.height(20.dp))
