@@ -168,6 +168,7 @@ class MeshService : Service() {
         MeshBus.sendTextHandler = { text -> sendText(text) }
         MeshBus.dropWaypointHandler = { label -> dropWaypoint(label) }
         MeshBus.removeWaypointHandler = { id -> waypointStore.remove(id); publishPeers() }
+        MeshBus.dropWaypointAtHandler = { lat, lon, label -> dropWaypointAt(lat, lon, label) }
         voicePlayer.onClipPlayed = { senderId, clipId ->
             val name = registry.nameOf(senderId) ?: senderId
             MeshBus.publishLastVoice("Last message from $name")
@@ -320,13 +321,17 @@ class MeshService : Service() {
 
     private fun dropWaypoint(label: String) {
         if (!hasFix) return
+        dropWaypointAt(myLat, myLon, label)
+    }
+
+    private fun dropWaypointAt(lat: Double, lon: Double, label: String) {
         val clean = label.trim().ifEmpty { "waypoint" }
         val p = Packet.Waypoint(
             originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
-            System.currentTimeMillis(), Settings.displayName.value, myLat, myLon, clean
+            System.currentTimeMillis(), Settings.displayName.value, lat, lon, clean
         )
         engine.send(p)
-        waypointStore.add(p.dedupKey, p.senderName, myLat, myLon, clean)
+        waypointStore.add(p.dedupKey, p.senderName, lat, lon, clean)
         publishPeers()
     }
 
@@ -354,6 +359,7 @@ class MeshService : Service() {
         MeshBus.sendTextHandler = null
         MeshBus.dropWaypointHandler = null
         MeshBus.removeWaypointHandler = null
+        MeshBus.dropWaypointAtHandler = null
         voicePlayer.onClipPlayed = null
         pttHeld.set(false)
         vad.stop()

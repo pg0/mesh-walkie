@@ -1,6 +1,8 @@
 package com.meshwalkie.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,14 +46,31 @@ fun SettingsScreen(onBack: () -> Unit) {
     var groupField by remember { mutableStateOf(savedGroup) }
     var quickTextsField by remember { mutableStateOf(savedQuickTexts.joinToString("\n")) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    val save = {
+        Settings.setDisplayName(nameField)
+        Settings.setQuickTexts(quickTextsField.split("\n"))
+        // setGroupCode returns true when it changed; the service observes
+        // the flow and rejoins the new mesh automatically.
+        Settings.setGroupCode(groupField)
+        onBack()
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Settings", style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = onBack) { Text("Back") }
+            Row {
+                TextButton(onClick = onBack) { Text("Back") }
+                Button(onClick = save) { Text("Save") }
+            }
         }
 
         Spacer(Modifier.height(24.dp))
@@ -136,23 +155,10 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(28.dp))
 
-        Button(
-            onClick = {
-                Settings.setDisplayName(nameField)
-                Settings.setQuickTexts(quickTextsField.split("\n"))
-                // setGroupCode returns true when it changed; the service observes
-                // the flow and rejoins the new mesh automatically.
-                Settings.setGroupCode(groupField)
-                onBack()
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Save") }
-
-        Spacer(Modifier.height(24.dp))
-
         Text(
             "Device ID: ${Settings.deviceId}",
             style = MaterialTheme.typography.bodySmall
         )
+        Spacer(Modifier.height(24.dp))
     }
 }

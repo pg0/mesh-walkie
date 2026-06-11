@@ -57,6 +57,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     var viewMode by remember { mutableIntStateOf(0) }   // 0 list, 1 radar, 2 map
     var showType by remember { mutableStateOf(false) }
     var showWp by remember { mutableStateOf(false) }
+    var showDropTarget by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
@@ -110,7 +111,13 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             val t = target
             val ml = myLoc
             if (t != null && ml != null) {
-                item { TargetRow(t, ml, heading) { MeshBus.clearTarget() } }
+                item {
+                    TargetRow(
+                        t, ml, heading,
+                        onDrop = { showDropTarget = true },
+                        onClear = { MeshBus.clearTarget() }
+                    )
+                }
             }
             // Shared waypoints (rally points).
             items(waypoints, key = { "w_${it.id}" }) { wp ->
@@ -213,6 +220,15 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                 onDismiss = { showWp = false }
             )
         }
+        if (showDropTarget) {
+            val t = target
+            TextInputDialog(
+                title = "Drop target as waypoint",
+                confirmLabel = "Drop",
+                onConfirm = { label -> t?.let { MeshBus.dropWaypointAtHandler?.invoke(it.first, it.second, label) } },
+                onDismiss = { showDropTarget = false }
+            )
+        }
     }
 }
 
@@ -244,7 +260,13 @@ fun PeerRow(peer: PeerView, myHeadingDeg: Float) {
 }
 
 @Composable
-fun TargetRow(target: Pair<Double, Double>, myLoc: Pair<Double, Double>, myHeadingDeg: Float, onClear: () -> Unit) {
+fun TargetRow(
+    target: Pair<Double, Double>,
+    myLoc: Pair<Double, Double>,
+    myHeadingDeg: Float,
+    onDrop: () -> Unit,
+    onClear: () -> Unit
+) {
     val dist = GeoMath.distanceMeters(myLoc.first, myLoc.second, target.first, target.second)
     val bearing = GeoMath.bearingDegrees(myLoc.first, myLoc.second, target.first, target.second)
     Row(
@@ -264,6 +286,7 @@ fun TargetRow(target: Pair<Double, Double>, myLoc: Pair<Double, Double>, myHeadi
             )
             Text("tap the map to move it", style = MaterialTheme.typography.bodySmall)
         }
+        TextButton(onClick = onDrop) { Text("Drop") }
         TextButton(onClick = onClear) { Text("✕") }
     }
 }

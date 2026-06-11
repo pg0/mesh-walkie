@@ -74,6 +74,9 @@ object MeshBus {
     /** Set by the service; UI calls it to delete a waypoint locally by id. */
     @Volatile var removeWaypointHandler: ((id: String) -> Unit)? = null
 
+    /** Set by the service; UI calls it to drop a waypoint at given coords (e.g. the target). */
+    @Volatile var dropWaypointAtHandler: ((lat: Double, lon: Double, label: String) -> Unit)? = null
+
     /** Set by the service; UI calls it to replay the last received clip. */
     @Volatile var replayHandler: (() -> Unit)? = null
 
