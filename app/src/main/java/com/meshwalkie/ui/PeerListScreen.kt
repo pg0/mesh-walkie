@@ -10,9 +10,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -34,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshwalkie.core.Display
@@ -44,6 +46,8 @@ import com.meshwalkie.core.PeerView
 import com.meshwalkie.core.WaypointView
 import com.meshwalkie.service.MeshBus
 import com.meshwalkie.service.Settings
+
+private val CHAT_ROW = 24.dp   // one chat line; viewport = 2x this, no partial line
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -62,6 +66,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     val waypoints by MeshBus.waypoints.collectAsStateWithLifecycle()
     val target by MeshBus.target.collectAsStateWithLifecycle()
     val liveOn by MeshBus.liveBroadcasting.collectAsStateWithLifecycle()
+    val liveVoiceOnly by Settings.liveVoiceOnly.collectAsStateWithLifecycle()
     val hosts by MeshBus.hosts.collectAsStateWithLifecycle()
     val myHostIp by MeshBus.myHostIp.collectAsStateWithLifecycle()
     val joinedServer by MeshBus.joinedServer.collectAsStateWithLifecycle()
@@ -203,13 +208,20 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                 reverseLayout = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 56.dp)   // ~2 lines, so it never shrinks the map
+                    // exactly 2 rows of CHAT_ROW height -> no partial third line peeking
+                    .height(CHAT_ROW * 2)
                     .padding(top = 8.dp)
             ) {
                 items(messages.asReversed()) { (text, atMs) ->
                     val age = nowTick - atMs
                     val label = if (age >= 0) "💬 $text  ·  ${Display.formatAge(age)} ago" else "💬 $text"
-                    Text(label, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.height(CHAT_ROW).wrapContentHeight()
+                    )
                 }
             }
         }
@@ -243,6 +255,13 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                 Text("🔴 LIVE", style = MaterialTheme.typography.titleMedium, color = Color(0xFFD32F2F))
             } else {
                 PttButton(onPtt = { pressed -> MeshBus.pttHandler?.invoke(pressed) })
+            }
+            Column(
+                modifier = Modifier.align(Alignment.CenterStart),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Voice det.", style = MaterialTheme.typography.labelMedium)
+                Switch(checked = liveVoiceOnly, onCheckedChange = { Settings.setLiveVoiceOnly(it) })
             }
             Column(
                 modifier = Modifier.align(Alignment.CenterEnd),
