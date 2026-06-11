@@ -191,18 +191,17 @@ fun SettingsScreen(onBack: () -> Unit) {
         myHostIp?.let { hip ->
             val clipboard = LocalClipboardManager.current
             val ctx = LocalContext.current
-            val addr = "[$hip]:51820"
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Hosting at $addr", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                TextButton(onClick = { clipboard.setText(AnnotatedString(addr)) }) { Text("Copy") }
+                Text("Hosting at $hip : 51820", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                TextButton(onClick = { clipboard.setText(AnnotatedString(hip)) }) { Text("Copy") }
                 TextButton(onClick = {
                     val send = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, "Join my Mesh Walkie host: $addr")
+                        putExtra(Intent.EXTRA_TEXT, "Join my Mesh Walkie host - IP: $hip  port: 51820")
                     }
                     ctx.startActivity(
                         Intent.createChooser(send, "Share host address")

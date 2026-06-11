@@ -210,7 +210,7 @@ class MeshService : Service() {
                     )
                 )
                 hostServer?.let {
-                    NetUtil.globalIpv6()?.let { ip -> announceHost(ip) }
+                    NetUtil.bestHostAddress()?.let { ip -> announceHost(ip) }
                     MeshBus.publishHostClientCount(it.clientCount)
                 }
                 publishPeers()
@@ -386,9 +386,9 @@ class MeshService : Service() {
 
     private fun startHost() {
         if (hostServer != null) return
-        val ip = NetUtil.globalIpv6()
+        val ip = NetUtil.bestHostAddress()
         if (ip == null) {
-            MeshBus.publishStatus("No public IPv6 - cannot host")
+            MeshBus.publishStatus("No network address - cannot host")
             return
         }
         val hs = HostServer(NetUtil.DEFAULT_PORT)
