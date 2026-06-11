@@ -105,6 +105,15 @@ object MeshBus {
 
     @Volatile var pttHandler: ((pressed: Boolean) -> Unit)? = null
 
+    /**
+     * True while the mic is actually capturing a PTT clip. Goes false the moment
+     * the recorder stops - including the auto-cut at the max-duration cap while
+     * the finger is still down, so the UI can flag "already sent, release".
+     */
+    private val _recording = MutableStateFlow(false)
+    val recording: StateFlow<Boolean> = _recording
+    fun publishRecording(on: Boolean) { _recording.value = on }
+
     /** Set by the service; UI calls it to drop a waypoint at my position. */
     @Volatile var dropWaypointHandler: ((label: String) -> Unit)? = null
 

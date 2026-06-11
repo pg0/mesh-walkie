@@ -54,6 +54,24 @@ class DisplayTest {
     }
 
     @Test
+    fun coLocatedShowsHereNotTinyDistance() {
+        // Below the GPS noise floor: "1 m SW" is meaningless -> "here".
+        assertEquals("here", Display.distanceLabel(0.0))
+        assertEquals("here", Display.distanceLabel(1.0))
+        assertEquals("here", Display.distanceLabel(4.9))
+        assertEquals("here", Display.proximityLabel(1.0, 225.0))
+        assertEquals("here", Display.proximityLabel(0.0, 0.0))
+    }
+
+    @Test
+    fun beyondHereThresholdShowsDistanceAndBearing() {
+        assertEquals("5 m N", Display.proximityLabel(5.0, 0.0))
+        assertEquals("600 m NNW", Display.proximityLabel(600.0, 337.5))
+        assertEquals("5 m", Display.distanceLabel(5.0))
+        assertEquals("600 m", Display.distanceLabel(600.0))
+    }
+
+    @Test
     fun arrowRotationIsBearingMinusHeadingNormalized() {
         assertEquals(0f, Display.arrowRotation(90.0, 90.0), 0.001f)
         assertEquals(20f, Display.arrowRotation(10.0, 350.0), 0.001f)   // wraps up

@@ -21,6 +21,21 @@ object Display {
         if (meters.roundToInt() < 1000) "${meters.roundToInt()} m"
         else String.format(Locale.US, "%.1f km", meters / 1000.0)
 
+    /**
+     * Below this many meters a peer is effectively co-located (GPS noise floor),
+     * so a "1 m SW"-style label is meaningless - show "here" instead.
+     */
+    const val HERE_M = 5.0
+
+    /** Distance only: "here" when co-located, else [formatDistance]. */
+    fun distanceLabel(meters: Double): String =
+        if (meters < HERE_M) "here" else formatDistance(meters)
+
+    /** Distance + 16-point bearing: "here" when co-located, else "120 m SW". */
+    fun proximityLabel(meters: Double, bearingDeg: Double): String =
+        if (meters < HERE_M) "here"
+        else "${formatDistance(meters)} ${compassLabel(bearingDeg)}"
+
     /** Relative age: "12s" / "3m" / "1h". */
     fun formatAge(ms: Long): String = when {
         ms < 60_000L -> "${ms / 1000L}s"

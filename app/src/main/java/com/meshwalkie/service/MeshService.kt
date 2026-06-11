@@ -353,7 +353,12 @@ class MeshService : Service() {
         if (pressed) {
             if (pttHeld.getAndSet(true)) return
             scope.launch(Dispatchers.IO) {
-                val pcm = recorder.record(isHeld = { pttHeld.get() }, audioSource = micSource())
+                MeshBus.publishRecording(true)
+                val pcm = try {
+                    recorder.record(isHeld = { pttHeld.get() }, audioSource = micSource())
+                } finally {
+                    MeshBus.publishRecording(false)   // false on max-cut too (finger may still be down)
+                }
                 emitClip(pcm)
             }
         } else {

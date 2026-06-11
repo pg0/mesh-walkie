@@ -96,7 +96,7 @@ fun RadarView(
             }
             drawCircle(color, radius = 16f, center = Offset(x, y))
             drawContext.canvas.nativeCanvas.drawText(
-                "${p.name} ${Display.formatDistance(p.distanceMeters)}",
+                "${p.name} ${Display.distanceLabel(p.distanceMeters)}",
                 x + 20f, y + 10f, labelPaint
             )
         }

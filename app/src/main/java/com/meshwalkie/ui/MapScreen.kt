@@ -81,7 +81,7 @@ fun MapScreen(
             peers.forEach { p ->
                 map.overlays.add(Marker(map).apply {
                     position = GeoPoint(p.lat, p.lon)
-                    title = "${p.name}  ${Display.formatDistance(p.distanceMeters)}"
+                    title = "${p.name}  ${Display.distanceLabel(p.distanceMeters)}"
                     styleLabel(android.graphics.Color.argb(220, 46, 125, 50))    // green
                     setTextIcon(p.name)
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)

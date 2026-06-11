@@ -312,8 +312,8 @@ fun PeerRow(peer: PeerView, myHeadingDeg: Float, isHost: Boolean = false) {
         Spacer(modifier = Modifier.size(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                // e.g. "600 m NNW"
-                text = "${Display.formatDistance(peer.distanceMeters)} ${Display.compassLabel(peer.bearingDeg)}",
+                // e.g. "600 m NNW", or "here" when co-located
+                text = Display.proximityLabel(peer.distanceMeters, peer.bearingDeg),
                 style = MaterialTheme.typography.titleMedium
             )
             val nameLine = if (peer.freshness == Freshness.STALE) "${peer.name} - offline, seen ${Display.formatAge(peer.ageMs)} ago" else peer.name
@@ -354,7 +354,7 @@ fun TargetRow(
         Spacer(modifier = Modifier.size(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                "🎯 TARGET  ${Display.formatDistance(dist)} ${Display.compassLabel(bearing)}$eta",
+                "🎯 TARGET  ${Display.proximityLabel(dist, bearing)}$eta",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -379,7 +379,7 @@ fun WaypointRow(wp: WaypointView, myHeadingDeg: Float, onDelete: () -> Unit) {
         Spacer(modifier = Modifier.size(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                "📍 ${wp.label}  ${Display.formatDistance(wp.distanceMeters)} ${Display.compassLabel(wp.bearingDeg)}",
+                "📍 ${wp.label}  ${Display.proximityLabel(wp.distanceMeters, wp.bearingDeg)}",
                 style = MaterialTheme.typography.titleMedium
             )
             Text("by ${wp.senderName}", style = MaterialTheme.typography.bodyMedium)
