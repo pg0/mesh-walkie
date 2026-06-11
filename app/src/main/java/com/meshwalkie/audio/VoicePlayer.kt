@@ -16,11 +16,18 @@ import java.nio.ByteOrder
  */
 class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
 
+    // A clip is dropped if no packet for it arrives within this window, so a
+    // permanently lost intermediate frame can never leak its map entry forever.
+    private val CLIP_TIMEOUT_MS = 10_000L
+
     private class ClipState {
         val reorder = ReorderBuffer()
         var config: ByteArray? = null
         val packets = mutableListOf<ByteArray>()
         var lastFrameSeen = false
+        var lastFrameNum = -1            // frameNum carried on the isLast packet
+        var emittedCount = 0             // frames the buffer has emitted (incl. config frame 0)
+        var lastActivityMs = System.currentTimeMillis()
     }
 
     private val clips = HashMap<String, ClipState>()
@@ -28,19 +35,38 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
     /** Feed every delivered Packet.Voice here. Plays when the clip is complete. */
     @Synchronized
     fun onVoicePacket(v: Packet.Voice) {
+        evictStaleClips()
         val key = "${v.originId}:${v.clipId}"
         val clip = clips.getOrPut(key) { ClipState() }
-        if (v.isLast) clip.lastFrameSeen = true
+        clip.lastActivityMs = System.currentTimeMillis()
+        if (v.isLast) {
+            clip.lastFrameSeen = true
+            clip.lastFrameNum = v.frameNum
+        }
         for (frame in clip.reorder.offer(v.frameNum, v.opusData)) {
             if (clip.config == null) clip.config = frame          // frame 0 = codec config
             else clip.packets += VoiceFramer.unpack(frame)
+            clip.emittedCount++
         }
-        if (clip.lastFrameSeen && clip.config != null) {
+        // Complete only when the last frame has been seen AND the reorder buffer
+        // has contiguously emitted every frame 0..lastFrameNum (config frame included).
+        if (clip.lastFrameSeen && clip.config != null &&
+            clip.emittedCount == clip.lastFrameNum + 1) {
             val config = clip.config!!
             val packets = clip.packets.toList()
             clips.remove(key)
+            // OpusCodec.decode() builds and releases its own MediaCodec per call, so
+            // concurrent clip playback is safe even though this play thread is unsynchronized.
             Thread { play(codec.decode(config, packets)) }.start()
         }
+    }
+
+    /** Drop clips that have been idle past CLIP_TIMEOUT_MS (lost-frame leak guard). */
+    private fun evictStaleClips() {
+        val now = System.currentTimeMillis()
+        // Per-clip state is purely in-memory (ReorderBuffer + ByteArrays); removing
+        // the map entry drops the only reference, so GC reclaims it - no resource to free.
+        clips.entries.removeAll { (_, clip) -> now - clip.lastActivityMs > CLIP_TIMEOUT_MS }
     }
 
     private fun play(pcm: ShortArray) {
