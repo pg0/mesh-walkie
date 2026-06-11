@@ -7,11 +7,11 @@ import java.net.NetworkInterface
 object NetUtil {
 
     /**
-     * Best address for clients to reach this host. Prefers a private LAN IPv4
-     * (192.168/10/172.16) so phones on the SAME WiFi connect directly, else a
-     * global IPv6 for cross-internet. Null if neither.
+     * Best address for clients to reach this host. Prefers a globally-routable
+     * IPv6 (works across the internet, e.g. host on mobile) and falls back to a
+     * private LAN IPv4 (same-WiFi). Null if neither.
      */
-    fun bestHostAddress(): String? = privateIpv4() ?: globalIpv6()
+    fun bestHostAddress(): String? = globalIpv6() ?: privateIpv4()
 
     /** Site-local LAN IPv4 (reachable by devices on the same network). */
     fun privateIpv4(): String? {
