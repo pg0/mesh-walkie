@@ -115,12 +115,14 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
         }
         if (muted) Text("🔇 Muted", style = MaterialTheme.typography.bodySmall)
         countdown?.let { (label, endAt) ->
-            val rem = ((endAt - nowTick) / 1000).coerceAtLeast(0)
-            Text(
-                "⏱ $label: ${rem / 60}:${(rem % 60).toString().padStart(2, '0')}",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
+            val rem = (endAt - nowTick) / 1000
+            if (rem > 0) {
+                Text(
+                    "⏱ $label: ${rem / 60}:${(rem % 60).toString().padStart(2, '0')}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
         if (waitingForGps) {
             Text(
@@ -279,7 +281,8 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                     val sec = (m.trim().toIntOrNull() ?: 0) * 60
                     if (sec > 0) MeshBus.startCountdownHandler?.invoke("Regroup", sec)
                 },
-                onDismiss = { showTimer = false }
+                onDismiss = { showTimer = false },
+                numeric = true
             )
         }
         if (showDropTarget) {

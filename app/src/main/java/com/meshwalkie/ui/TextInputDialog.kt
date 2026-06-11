@@ -1,9 +1,11 @@
 package com.meshwalkie.ui
 
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -21,7 +23,8 @@ fun TextInputDialog(
     confirmLabel: String,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
-    allowEmpty: Boolean = false
+    allowEmpty: Boolean = false,
+    numeric: Boolean = false
 ) {
     var value by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
@@ -34,6 +37,7 @@ fun TextInputDialog(
                 value = value,
                 onValueChange = { value = it },
                 singleLine = true,
+                keyboardOptions = if (numeric) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default,
                 modifier = Modifier.focusRequester(focusRequester)
             )
         },
