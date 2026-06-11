@@ -38,6 +38,22 @@ class DisplayTest {
     }
 
     @Test
+    fun compassLabelNegativeBearingDoesNotCrash() {
+        // -90 degrees == 270 degrees == W
+        assertEquals("W", Display.compassLabel(-90.0))
+        // -10 degrees rounds to 0 mod 16 == N
+        assertEquals("N", Display.compassLabel(-10.0))
+    }
+
+    @Test
+    fun distanceBoundary999point5RoundsToKm() {
+        // 999.5.roundToInt() == 1000, not < 1000, so should render as km
+        assertEquals("1.0 km", Display.formatDistance(999.5))
+        // 999.4.roundToInt() == 999, which is < 1000, so meters
+        assertEquals("999 m", Display.formatDistance(999.4))
+    }
+
+    @Test
     fun arrowRotationIsBearingMinusHeadingNormalized() {
         assertEquals(0f, Display.arrowRotation(90.0, 90.0), 0.001f)
         assertEquals(20f, Display.arrowRotation(10.0, 350.0), 0.001f)   // wraps up
