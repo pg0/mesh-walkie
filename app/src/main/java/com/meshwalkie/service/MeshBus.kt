@@ -39,6 +39,9 @@ object MeshBus {
 
     fun publishBreadcrumbs(list: List<Pair<Double, Double>>) { _breadcrumbs.value = list }
 
+    /** Set by the service; UI calls it to retrace the trail back to the start. */
+    @Volatile var guideBackHandler: (() -> Unit)? = null
+
     private val _myHeading = MutableStateFlow(0f)
     val myHeading: StateFlow<Float> = _myHeading
 

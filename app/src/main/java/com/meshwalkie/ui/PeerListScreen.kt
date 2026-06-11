@@ -195,12 +195,9 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
         ) {
             QuickTextWheel(onSend = { MeshBus.sendTextHandler?.invoke(it) })
             TextButton(onClick = { showType = true }) { Text("Msg") }
-            TextButton(onClick = { showWp = true }) { Text("Drop WP") }
+            TextButton(onClick = { showWp = true }) { Text("📍Waypoint") }
             if (breadcrumbs.isNotEmpty()) {
-                TextButton(onClick = {
-                    val start = breadcrumbs.first()
-                    MeshBus.setTarget(start.first, start.second)
-                }) { Text("Guide back") }
+                TextButton(onClick = { MeshBus.guideBackHandler?.invoke() }) { Text("Guide back") }
             }
         }
         Box(
@@ -268,7 +265,7 @@ fun PeerRow(peer: PeerView, myHeadingDeg: Float) {
                 text = "${Display.formatDistance(peer.distanceMeters)} ${Display.compassLabel(peer.bearingDeg)}",
                 style = MaterialTheme.typography.titleMedium
             )
-            val nameLine = if (peer.freshness == Freshness.STALE) "${peer.name} - offline (last position)" else peer.name
+            val nameLine = if (peer.freshness == Freshness.STALE) "${peer.name} - offline, seen ${Display.formatAge(peer.ageMs)} ago" else peer.name
             val batt = if (peer.batteryPct in 0..100) "  🔋${peer.batteryPct}%" else ""
             Text(nameLine + batt, style = MaterialTheme.typography.bodyMedium)
         }
@@ -341,7 +338,7 @@ fun RosterRow(entry: PeerRosterEntry) {
         Column(modifier = Modifier.weight(1f)) {
             Text(entry.name, style = MaterialTheme.typography.titleMedium)
             val proximity = if (entry.hops == 0) "direct (near)" else "${entry.hops} hops (~${entry.hops * 75} m)"
-            val offline = if (entry.freshness == Freshness.STALE) "offline - " else ""
+            val offline = if (entry.freshness == Freshness.STALE) "offline ${Display.formatAge(entry.ageMs)} ago - " else ""
             val batt = if (entry.batteryPct in 0..100) " - 🔋${entry.batteryPct}%" else ""
             Text(
                 "$offline$proximity - ID ${entry.id}$batt",

@@ -17,6 +17,7 @@ import com.meshwalkie.audio.PttRecorder
 import com.meshwalkie.audio.VadRecorder
 import com.meshwalkie.audio.VoicePlayer
 import com.meshwalkie.audio.VoiceSender
+import com.meshwalkie.core.GeoMath
 import com.meshwalkie.core.MeshEngine
 import com.meshwalkie.core.Packet
 import com.meshwalkie.core.PeerRegistry
@@ -73,6 +74,7 @@ class MeshService : Service() {
     private val outbox = ArrayDeque<ShortArray>()   // voice clips recorded while offline
     private val breadcrumbs = ArrayList<Pair<Double, Double>>()
     @Volatile private var lastBreadcrumbMs = 0L
+    @Volatile private var retraceIndex = -1   // -1 = not retracing; else index into breadcrumbs
     private val started = AtomicBoolean(false)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -126,16 +128,20 @@ class MeshService : Service() {
             MeshBus.publishWaitingForGps(false)
             MeshBus.publishMyLocation(fix.latitude, fix.longitude)
             if (Settings.breadcrumbEnabled.value) {
-                val now = System.currentTimeMillis()
-                if (now - lastBreadcrumbMs > 30_000L) {
-                    lastBreadcrumbMs = now
-                    synchronized(breadcrumbs) {
+                // distance-based: drop a crumb every ~25 m moved
+                synchronized(breadcrumbs) {
+                    val last = breadcrumbs.lastOrNull()
+                    val moved = last == null || GeoMath.distanceMeters(
+                        last.first, last.second, fix.latitude, fix.longitude
+                    ) >= 25.0
+                    if (moved) {
                         breadcrumbs.add(fix.latitude to fix.longitude)
-                        while (breadcrumbs.size > 500) breadcrumbs.removeAt(0)
+                        while (breadcrumbs.size > 1000) breadcrumbs.removeAt(0)
                         MeshBus.publishBreadcrumbs(breadcrumbs.toList())
                     }
                 }
             }
+            advanceRetrace(fix.latitude, fix.longitude)
             engine.send(
                 Packet.Position(
                     originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,
@@ -176,6 +182,7 @@ class MeshService : Service() {
         MeshBus.dropWaypointHandler = { label -> dropWaypoint(label) }
         MeshBus.removeWaypointHandler = { id -> waypointStore.remove(id); publishPeers() }
         MeshBus.dropWaypointAtHandler = { lat, lon, label -> dropWaypointAt(lat, lon, label) }
+        MeshBus.guideBackHandler = { startRetrace() }
         voicePlayer.onClipPlayed = { senderId, clipId ->
             val name = registry.nameOf(senderId) ?: senderId
             MeshBus.publishLastVoice("Last message from $name")
@@ -357,6 +364,34 @@ class MeshService : Service() {
         MeshBus.publishWaypoints(waypointStore.snapshot(myLat, myLon))
     }
 
+    /** Start retracing: target the trail end, stepping back toward the start as we go. */
+    private fun startRetrace() {
+        val pts = synchronized(breadcrumbs) { breadcrumbs.toList() }
+        if (pts.isEmpty()) return
+        retraceIndex = pts.lastIndex
+        MeshBus.setTarget(pts[retraceIndex].first, pts[retraceIndex].second)
+        MeshBus.publishStatus("Retracing trail to start")
+    }
+
+    /** On each fix, advance to the next-earlier breadcrumb once we reach the current one. */
+    private fun advanceRetrace(lat: Double, lon: Double) {
+        if (retraceIndex < 0) return
+        val pts = synchronized(breadcrumbs) { breadcrumbs.toList() }
+        if (pts.isEmpty()) { retraceIndex = -1; return }
+        if (retraceIndex > pts.lastIndex) retraceIndex = pts.lastIndex
+        val cur = pts[retraceIndex]
+        if (GeoMath.distanceMeters(lat, lon, cur.first, cur.second) < 15.0) {
+            retraceIndex--
+            if (retraceIndex < 0) {
+                MeshBus.clearTarget()
+                MeshBus.publishStatus("Back at start")
+                return
+            }
+        }
+        val next = pts[retraceIndex]
+        MeshBus.setTarget(next.first, next.second)
+    }
+
     private fun dropWaypoint(label: String) {
         if (!hasFix) return
         dropWaypointAt(myLat, myLon, label)
@@ -398,6 +433,7 @@ class MeshService : Service() {
         MeshBus.dropWaypointHandler = null
         MeshBus.removeWaypointHandler = null
         MeshBus.dropWaypointAtHandler = null
+        MeshBus.guideBackHandler = null
         voicePlayer.onClipPlayed = null
         pttHeld.set(false)
         vad.stop()

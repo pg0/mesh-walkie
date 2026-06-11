@@ -12,7 +12,8 @@ data class PeerView(
     val freshness: Freshness,
     val batteryPct: Int = -1,
     val lat: Double = 0.0,
-    val lon: Double = 0.0
+    val lon: Double = 0.0,
+    val ageMs: Long = 0L
 )
 
 /**
@@ -26,7 +27,8 @@ data class PeerRosterEntry(
     val hasPosition: Boolean,
     /** 0 = direct neighbour, N = reached via N relays. Coarse GPS-free proximity. */
     val hops: Int,
-    val batteryPct: Int = -1
+    val batteryPct: Int = -1,
+    val ageMs: Long = 0L
 )
 
 /**
@@ -90,7 +92,8 @@ class PeerRegistry {
                 freshness = freshnessOf(age),
                 batteryPct = s.batteryPct,
                 lat = lat,
-                lon = lon
+                lon = lon,
+                ageMs = age
             )
         }.sortedBy { it.distanceMeters }
 
@@ -107,7 +110,8 @@ class PeerRegistry {
                 freshness = freshnessOf(nowMs - s.lastSeenMs),
                 hasPosition = s.lat != null && s.lon != null,
                 hops = s.hops,
-                batteryPct = s.batteryPct
+                batteryPct = s.batteryPct,
+                ageMs = nowMs - s.lastSeenMs
             )
         }.sortedWith(compareBy({ it.hops }, { it.name }))
 
