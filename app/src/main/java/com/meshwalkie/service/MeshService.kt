@@ -260,6 +260,7 @@ class MeshService : Service() {
             MeshBus.publishLinkCount(n)
             MeshBus.publishStatus(statusText(n))
             if (was == 0 && n > 0) flushOutbox()   // reconnected: deliver queued clips
+            if (n < was && Settings.offlineSound.value) offlineBeep()   // a device dropped
         }
         MeshBus.publishLinkCount(0)
         MeshBus.publishStatus(statusText(0))   // "Suche Geraete…" until first link
@@ -293,6 +294,14 @@ class MeshService : Service() {
     private fun beep() {
         try {
             tone.startTone(android.media.ToneGenerator.TONE_PROP_BEEP2, 250)
+        } catch (_: Exception) {
+        }
+    }
+
+    /** Distinct alert when a connected device drops off the mesh. */
+    private fun offlineBeep() {
+        try {
+            tone.startTone(android.media.ToneGenerator.TONE_SUP_ERROR, 400)
         } catch (_: Exception) {
         }
     }

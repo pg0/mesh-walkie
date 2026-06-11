@@ -23,6 +23,7 @@ object Settings {
     private const val KEY_NET_HOST = "net_host"
     private const val KEY_NET_CLIENT = "net_client"
     private const val KEY_GPS = "gps_enabled"
+    private const val KEY_OFFLINE_SOUND = "offline_sound"
 
     private lateinit var appContext: Context
 
@@ -69,6 +70,10 @@ object Settings {
     private val _gpsEnabled = MutableStateFlow(true)
     val gpsEnabled: StateFlow<Boolean> = _gpsEnabled
 
+    /** Play an alert tone when a connected device drops off the mesh. */
+    private val _offlineSound = MutableStateFlow(false)
+    val offlineSound: StateFlow<Boolean> = _offlineSound
+
     /** Stable device id (read-only), shown in settings. */
     var deviceId: String = ""
         private set
@@ -91,12 +96,19 @@ object Settings {
         _internetHost.value = prefs.getBoolean(KEY_NET_HOST, false)
         _internetClient.value = prefs.getBoolean(KEY_NET_CLIENT, false)
         _gpsEnabled.value = prefs.getBoolean(KEY_GPS, true)
+        _offlineSound.value = prefs.getBoolean(KEY_OFFLINE_SOUND, false)
     }
 
     fun setGpsEnabled(on: Boolean) {
         _gpsEnabled.value = on
         appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_GPS, on).apply()
+    }
+
+    fun setOfflineSound(on: Boolean) {
+        _offlineSound.value = on
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_OFFLINE_SOUND, on).apply()
     }
 
     fun setBtHeadset(on: Boolean) {

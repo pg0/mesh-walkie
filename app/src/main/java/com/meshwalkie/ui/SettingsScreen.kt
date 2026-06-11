@@ -46,6 +46,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     val netHost by Settings.internetHost.collectAsStateWithLifecycle()
     val netClient by Settings.internetClient.collectAsStateWithLifecycle()
     val gpsOn by Settings.gpsEnabled.collectAsStateWithLifecycle()
+    val offlineSound by Settings.offlineSound.collectAsStateWithLifecycle()
     val myHostIp by MeshBus.myHostIp.collectAsStateWithLifecycle()
     val savedName by Settings.displayName.collectAsStateWithLifecycle()
     val savedGroup by Settings.groupCode.collectAsStateWithLifecycle()
@@ -141,6 +142,17 @@ fun SettingsScreen(onBack: () -> Unit) {
         ) {
             Text("Share my GPS position", style = MaterialTheme.typography.labelLarge)
             Switch(checked = gpsOn, onCheckedChange = { Settings.setGpsEnabled(it) })
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Sound if a device goes offline", style = MaterialTheme.typography.labelLarge)
+            Switch(checked = offlineSound, onCheckedChange = { Settings.setOfflineSound(it) })
         }
 
         Spacer(Modifier.height(20.dp))
