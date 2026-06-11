@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,6 +43,7 @@ import com.meshwalkie.core.WaypointView
 import com.meshwalkie.service.MeshBus
 import com.meshwalkie.service.Settings
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     val peers by MeshBus.peers.collectAsStateWithLifecycle()
@@ -123,13 +126,13 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                     )
                 }
             }
-            // Shared waypoints (rally points).
-            items(waypoints, key = { "w_${it.id}" }) { wp ->
-                WaypointRow(wp, heading) { MeshBus.removeWaypointHandler?.invoke(wp.id) }
-            }
-            // Full arrow rows when positions are known.
+            // Users next (full arrow rows when positions are known).
             items(peers, key = { "p_${it.id}" }) { peer ->
                 PeerRow(peer = peer, myHeadingDeg = heading)
+            }
+            // Then shared waypoints (rally points).
+            items(waypoints, key = { "w_${it.id}" }) { wp ->
+                WaypointRow(wp, heading) { MeshBus.removeWaypointHandler?.invoke(wp.id) }
             }
             // Connected peers without a usable position yet (no GPS on a side):
             // show name + id + freshness so you can see who is on the mesh.
@@ -186,10 +189,9 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
         sentStatus?.let { ss ->
             Text("✅ $ss", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
         }
-        Row(
+        FlowRow(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.Center
         ) {
             QuickTextWheel(onSend = { MeshBus.sendTextHandler?.invoke(it) })
             TextButton(onClick = { showType = true }) { Text("Msg") }
