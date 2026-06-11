@@ -26,13 +26,16 @@ class OpusCodec {
         val packets = mutableListOf<ByteArray>()
         var inOffset = 0
         var inputDone = false
+        // Guard against an infinite spin if EOS never arrives once input is done.
+        var stalls = 0
+        val info = MediaCodec.BufferInfo()
 
         try {
             while (true) {
                 if (!inputDone) {
                     val inIdx = codec.dequeueInputBuffer(TIMEOUT_US)
                     if (inIdx >= 0) {
-                        val inBuf = codec.getInputBuffer(inIdx)!!
+                        val inBuf = codec.getInputBuffer(inIdx)!!.apply { clear() }
                         val samples = minOf(FRAME_SAMPLES, pcm.size - inOffset)
                         if (samples <= 0) {
                             codec.queueInputBuffer(
@@ -47,11 +50,14 @@ class OpusCodec {
                         }
                     }
                 }
-                val info = MediaCodec.BufferInfo()
                 val outIdx = codec.dequeueOutputBuffer(info, TIMEOUT_US)
                 if (outIdx >= 0) {
+                    stalls = 0
+                    val outBuf = codec.getOutputBuffer(outIdx)!!
+                    outBuf.position(info.offset)
+                    outBuf.limit(info.offset + info.size)
                     val out = ByteArray(info.size)
-                    codec.getOutputBuffer(outIdx)!!.get(out)
+                    outBuf.get(out)
                     codec.releaseOutputBuffer(outIdx, false)
                     if (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
                         config = out
@@ -59,6 +65,8 @@ class OpusCodec {
                         packets += out
                     }
                     if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
+                } else if (inputDone && ++stalls > MAX_DRAIN_STALLS) {
+                    throw IllegalStateException("opus codec drained without EOS")
                 }
             }
         } finally {
@@ -85,6 +93,9 @@ class OpusCodec {
         val pcmOut = mutableListOf<Short>()
         var packetIdx = 0
         var inputDone = false
+        // Guard against an infinite spin if EOS never arrives once input is done.
+        var stalls = 0
+        val info = MediaCodec.BufferInfo()
 
         try {
             while (true) {
@@ -98,18 +109,22 @@ class OpusCodec {
                             inputDone = true
                         } else {
                             val packet = packets[packetIdx++]
-                            codec.getInputBuffer(inIdx)!!.put(packet)
+                            codec.getInputBuffer(inIdx)!!.apply { clear(); put(packet) }
                             codec.queueInputBuffer(inIdx, 0, packet.size, 0, 0)
                         }
                     }
                 }
-                val info = MediaCodec.BufferInfo()
                 val outIdx = codec.dequeueOutputBuffer(info, TIMEOUT_US)
                 if (outIdx >= 0) {
+                    stalls = 0
                     val buf = codec.getOutputBuffer(outIdx)!!.order(ByteOrder.LITTLE_ENDIAN)
+                    buf.position(info.offset)
+                    buf.limit(info.offset + info.size)
                     repeat(info.size / 2) { pcmOut += buf.short }
                     codec.releaseOutputBuffer(outIdx, false)
                     if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
+                } else if (inputDone && ++stalls > MAX_DRAIN_STALLS) {
+                    throw IllegalStateException("opus codec drained without EOS")
                 }
             }
         } finally {
@@ -124,5 +139,7 @@ class OpusCodec {
         const val FRAME_SAMPLES = 320      // 20 ms at 16 kHz
         const val BIT_RATE = 24_000
         private const val TIMEOUT_US = 10_000L
+        // Cap on consecutive INFO_TRY_AGAIN_LATER after input EOS submitted (~10 s at 10 ms timeout).
+        private const val MAX_DRAIN_STALLS = 1000
     }
 }
