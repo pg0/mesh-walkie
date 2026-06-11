@@ -36,6 +36,9 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
     // Last fully-received clip, kept for replay after the live playback.
     @Volatile private var lastPcm: ShortArray? = null
 
+    /** When true, received clips are decoded + cached for replay but not played aloud. */
+    @Volatile var muted = false
+
     /** Fired (off the lock) when a clip finishes assembling: sender id + clip id. */
     @Volatile var onClipPlayed: ((senderId: String, clipId: Int) -> Unit)? = null
 
@@ -76,7 +79,7 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
 
     /** Replay the last fully-received clip, if any. */
     fun replayLast() {
-        lastPcm?.let { pcm -> Thread { play(pcm) }.start() }
+        lastPcm?.let { pcm -> Thread { play(pcm, force = true) }.start() }
     }
 
     /** Drop clips that have been idle past CLIP_TIMEOUT_MS (lost-frame leak guard). */
@@ -87,8 +90,8 @@ class VoicePlayer(private val codec: OpusCodec = OpusCodec()) {
         clips.entries.removeAll { (_, clip) -> now - clip.lastActivityMs > CLIP_TIMEOUT_MS }
     }
 
-    private fun play(pcm: ShortArray) {
-        if (pcm.isEmpty()) return
+    private fun play(pcm: ShortArray, force: Boolean = false) {
+        if (pcm.isEmpty() || (muted && !force)) return   // muted: cached for replay, just not played
         val bytes = ByteBuffer.allocate(pcm.size * 2).order(ByteOrder.LITTLE_ENDIAN)
         pcm.forEach { bytes.putShort(it) }
         val track = AudioTrack.Builder()

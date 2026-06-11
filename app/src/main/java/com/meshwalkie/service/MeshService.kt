@@ -168,6 +168,9 @@ class MeshService : Service() {
                 }
         }
 
+        // Mute-all also silences received voice playback.
+        scope.launch { Settings.muteSounds.collect { on -> voicePlayer.muted = on } }
+
         // Route mic/audio to a Bluetooth headset when the setting is on.
         scope.launch { Settings.btHeadset.collect { on -> applyHeadsetRouting(on) } }
 
@@ -240,7 +243,7 @@ class MeshService : Service() {
             if (packet is Packet.Voice) voicePlayer.onVoicePacket(packet)
             if (packet is Packet.Text) {
                 MeshBus.publishText("${packet.senderName}: ${packet.text}")
-                beep()
+                if (Settings.textSound.value) beep()
             }
             if (packet is Packet.Waypoint) {
                 waypointStore.add(packet.dedupKey, packet.senderName, packet.lat, packet.lon, packet.label)

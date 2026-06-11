@@ -27,6 +27,7 @@ object Settings {
     private const val KEY_VOLUME_PTT = "volume_ptt"
     private const val KEY_MUTE = "mute_sounds"
     private const val KEY_NIGHT = "night_mode"
+    private const val KEY_TEXT_SOUND = "text_sound"
 
     private lateinit var appContext: Context
 
@@ -89,6 +90,10 @@ object Settings {
     private val _nightMode = MutableStateFlow(false)
     val nightMode: StateFlow<Boolean> = _nightMode
 
+    /** Beep when a quick-text arrives. */
+    private val _textSound = MutableStateFlow(true)
+    val textSound: StateFlow<Boolean> = _textSound
+
     /** Stable device id (read-only), shown in settings. */
     var deviceId: String = ""
         private set
@@ -115,6 +120,13 @@ object Settings {
         _volumePtt.value = prefs.getBoolean(KEY_VOLUME_PTT, false)
         _muteSounds.value = prefs.getBoolean(KEY_MUTE, false)
         _nightMode.value = prefs.getBoolean(KEY_NIGHT, false)
+        _textSound.value = prefs.getBoolean(KEY_TEXT_SOUND, true)
+    }
+
+    fun setTextSound(on: Boolean) {
+        _textSound.value = on
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_TEXT_SOUND, on).apply()
     }
 
     fun setVolumePtt(on: Boolean) {

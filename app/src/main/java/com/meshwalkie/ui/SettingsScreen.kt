@@ -50,6 +50,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     val volumePtt by Settings.volumePtt.collectAsStateWithLifecycle()
     val muteSounds by Settings.muteSounds.collectAsStateWithLifecycle()
     val nightMode by Settings.nightMode.collectAsStateWithLifecycle()
+    val textSound by Settings.textSound.collectAsStateWithLifecycle()
     val myHostIp by MeshBus.myHostIp.collectAsStateWithLifecycle()
     val savedName by Settings.displayName.collectAsStateWithLifecycle()
     val savedGroup by Settings.groupCode.collectAsStateWithLifecycle()
@@ -178,6 +179,17 @@ fun SettingsScreen(onBack: () -> Unit) {
         ) {
             Text("Mute all sounds", style = MaterialTheme.typography.labelLarge)
             Switch(checked = muteSounds, onCheckedChange = { Settings.setMuteSounds(it) })
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Text message sound", style = MaterialTheme.typography.labelLarge)
+            Switch(checked = textSound, onCheckedChange = { Settings.setTextSound(it) })
         }
 
         Spacer(Modifier.height(20.dp))
