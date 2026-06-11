@@ -1,6 +1,3 @@
-import java.text.SimpleDateFormat
-import java.util.Date
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -16,16 +13,9 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
-        buildConfigField(
-            "String", "BUILD_TIME",
-            "\"" + SimpleDateFormat("yyyy-MM-dd HH:mm").format(Date()) + "\""
-        )
     }
 
-    buildFeatures {
-        compose = true
-        buildConfig = true
-    }
+    buildFeatures { compose = true }
 
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14"

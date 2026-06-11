@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshwalkie.service.Settings
@@ -159,10 +160,15 @@ fun SettingsScreen(onBack: () -> Unit) {
             "Device ID: ${Settings.deviceId}",
             style = MaterialTheme.typography.bodySmall
         )
-        Text(
-            "v${com.meshwalkie.BuildConfig.VERSION_NAME} - built ${com.meshwalkie.BuildConfig.BUILD_TIME}",
-            style = MaterialTheme.typography.bodySmall
-        )
+        val ctx = LocalContext.current
+        val versionLine = remember {
+            @Suppress("DEPRECATION")
+            val pi = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
+            val installed = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.US)
+                .format(java.util.Date(pi.lastUpdateTime))
+            "v${pi.versionName} - installed $installed"
+        }
+        Text(versionLine, style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(24.dp))
     }
 }
