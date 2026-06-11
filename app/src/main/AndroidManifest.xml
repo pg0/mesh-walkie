@@ -12,7 +12,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <!-- CHANGE_WIFI_STATE removed: it let Nearby auto-enable WiFi. BLE-only mesh now. -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 
     <!-- Map tiles (OpenStreetMap via osmdroid); cacheable for offline use -->
     <uses-permission android:name="android.permission.INTERNET" />

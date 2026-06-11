@@ -95,14 +95,15 @@ class NearbyTransport(
     }
 
     fun start() {
+        // setLowPower(true) keeps Nearby on BLE only, so it never auto-enables WiFi.
         client.startAdvertising(
             deviceName, serviceId, lifecycleCallback,
-            AdvertisingOptions.Builder().setStrategy(Strategy.P2P_CLUSTER).build()
+            AdvertisingOptions.Builder().setStrategy(Strategy.P2P_CLUSTER).setLowPower(true).build()
         ).addOnFailureListener { e -> Log.e(TAG, "startAdvertising: $e") }
 
         client.startDiscovery(
             serviceId, discoveryCallback,
-            DiscoveryOptions.Builder().setStrategy(Strategy.P2P_CLUSTER).build()
+            DiscoveryOptions.Builder().setStrategy(Strategy.P2P_CLUSTER).setLowPower(true).build()
         ).addOnFailureListener { e -> Log.e(TAG, "startDiscovery: $e") }
     }
 
