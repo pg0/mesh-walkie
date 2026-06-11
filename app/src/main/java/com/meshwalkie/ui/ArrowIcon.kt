@@ -10,10 +10,22 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.dp
 
-/** Arrow pointing up at rotationDeg = 0; rotated by bearingToPeer - myHeading. */
+/**
+ * Arrow pointing up at rotationDeg = 0; rotated by bearingToPeer - myHeading.
+ * When [ball] is true (peer is essentially on top of you, ~0 m), direction is
+ * meaningless so we draw a solid dot instead of an arrow.
+ */
 @Composable
-fun ArrowIcon(rotationDeg: Float, modifier: Modifier = Modifier) {
+fun ArrowIcon(rotationDeg: Float, modifier: Modifier = Modifier, ball: Boolean = false) {
     Canvas(modifier = modifier.size(40.dp)) {
+        if (ball) {
+            drawCircle(
+                color = Color(0xFF1565C0),
+                radius = size.minDimension * 0.32f,
+                center = Offset(size.width * 0.5f, size.height * 0.5f)
+            )
+            return@Canvas
+        }
         rotate(degrees = rotationDeg) {
             val w = size.width
             val h = size.height

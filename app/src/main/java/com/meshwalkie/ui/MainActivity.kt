@@ -68,7 +68,13 @@ class MainActivity : ComponentActivity() {
                     if (showSettings) {
                         SettingsScreen(onBack = { showSettings = false })
                     } else {
-                        PeerListScreen(onOpenSettings = { showSettings = true })
+                        PeerListScreen(
+                            onOpenSettings = { showSettings = true },
+                            onExit = {
+                                stopService(Intent(this@MainActivity, MeshService::class.java))
+                                finishAndRemoveTask()
+                            }
+                        )
                     }
                 }
             }

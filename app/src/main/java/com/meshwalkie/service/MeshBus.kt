@@ -17,6 +17,10 @@ object MeshBus {
     private val _roster = MutableStateFlow<List<PeerRosterEntry>>(emptyList())
     val roster: StateFlow<List<PeerRosterEntry>> = _roster
 
+    /** My own (lat, lon) once fixed, for the map view. Null until first fix. */
+    private val _myLocation = MutableStateFlow<Pair<Double, Double>?>(null)
+    val myLocation: StateFlow<Pair<Double, Double>?> = _myLocation
+
     private val _myHeading = MutableStateFlow(0f)
     val myHeading: StateFlow<Float> = _myHeading
 
@@ -50,6 +54,7 @@ object MeshBus {
 
     fun publishPeers(views: List<PeerView>) { _peers.value = views }
     fun publishRoster(entries: List<PeerRosterEntry>) { _roster.value = entries }
+    fun publishMyLocation(lat: Double, lon: Double) { _myLocation.value = lat to lon }
     fun publishHeading(deg: Float) { _myHeading.value = deg }
     fun publishWaitingForGps(waiting: Boolean) { _waitingForGps.value = waiting }
     fun publishLinkCount(n: Int) { _linkCount.value = n }

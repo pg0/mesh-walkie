@@ -10,7 +10,9 @@ data class PeerView(
     val distanceMeters: Double,
     val bearingDeg: Double,
     val freshness: Freshness,
-    val batteryPct: Int = -1
+    val batteryPct: Int = -1,
+    val lat: Double = 0.0,
+    val lon: Double = 0.0
 )
 
 /**
@@ -86,7 +88,9 @@ class PeerRegistry {
                 distanceMeters = GeoMath.distanceMeters(myLat, myLon, lat, lon),
                 bearingDeg = GeoMath.bearingDegrees(myLat, myLon, lat, lon),
                 freshness = freshnessOf(age),
-                batteryPct = s.batteryPct
+                batteryPct = s.batteryPct,
+                lat = lat,
+                lon = lon
             )
         }.sortedBy { it.distanceMeters }
 

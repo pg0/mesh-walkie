@@ -107,6 +107,7 @@ class MeshService : Service() {
             myLon = fix.longitude
             hasFix = true
             MeshBus.publishWaitingForGps(false)
+            MeshBus.publishMyLocation(fix.latitude, fix.longitude)
             engine.send(
                 Packet.Position(
                     originId, seq.incrementAndGet(), Packet.DEFAULT_TTL,

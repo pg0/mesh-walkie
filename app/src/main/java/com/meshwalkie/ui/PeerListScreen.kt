@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,7 +35,7 @@ import com.meshwalkie.core.PeerView
 import com.meshwalkie.service.MeshBus
 
 @Composable
-fun PeerListScreen(onOpenSettings: () -> Unit) {
+fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     val peers by MeshBus.peers.collectAsStateWithLifecycle()
     val heading by MeshBus.myHeading.collectAsStateWithLifecycle()
     val waitingForGps by MeshBus.waitingForGps.collectAsStateWithLifecycle()
@@ -44,7 +45,8 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
     val roster by MeshBus.roster.collectAsStateWithLifecycle()
     val lastVoice by MeshBus.lastVoice.collectAsStateWithLifecycle()
     val messages by MeshBus.messages.collectAsStateWithLifecycle()
-    var showRadar by remember { mutableStateOf(false) }
+    val myLoc by MeshBus.myLocation.collectAsStateWithLifecycle()
+    var viewMode by remember { mutableIntStateOf(0) }   // 0 list, 1 radar, 2 map
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
@@ -53,7 +55,10 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Mesh Walkie", style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = onOpenSettings) { Text("Settings") }
+            Row {
+                TextButton(onClick = onOpenSettings) { Text("Settings") }
+                TextButton(onClick = onExit) { Text("Exit") }
+            }
         }
         Text(status, style = MaterialTheme.typography.bodyMedium)
         if (waitingForGps) {
@@ -68,13 +73,15 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             horizontalArrangement = Arrangement.Center
         ) {
-            TextButton(onClick = { showRadar = false }) { Text(if (showRadar) "List" else "List ●") }
-            TextButton(onClick = { showRadar = true }) { Text(if (showRadar) "Radar ●" else "Radar") }
+            TextButton(onClick = { viewMode = 0 }) { Text(if (viewMode == 0) "List ●" else "List") }
+            TextButton(onClick = { viewMode = 1 }) { Text(if (viewMode == 1) "Radar ●" else "Radar") }
+            TextButton(onClick = { viewMode = 2 }) { Text(if (viewMode == 2) "Map ●" else "Map") }
         }
 
-        if (showRadar) {
-            RadarView(peers, heading, Modifier.weight(1f).fillMaxWidth())
-        } else LazyColumn(modifier = Modifier.weight(1f)) {
+        when (viewMode) {
+            1 -> RadarView(peers, heading, Modifier.weight(1f).fillMaxWidth())
+            2 -> MapScreen(peers, myLoc, Modifier.weight(1f).fillMaxWidth())
+            else -> LazyColumn(modifier = Modifier.weight(1f)) {
             // Full arrow rows when positions are known.
             items(peers, key = { "p_${it.id}" }) { peer ->
                 PeerRow(peer = peer, myHeadingDeg = heading)
@@ -104,6 +111,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit) {
                         modifier = Modifier.padding(top = 8.dp)
                     )
                 }
+            }
             }
         }
         if (messages.isNotEmpty()) {
@@ -145,8 +153,12 @@ fun PeerRow(peer: PeerView, myHeadingDeg: Float) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
     ) {
-        // arrow rotation = bearingToPeer - myHeading (tested in Task 3)
-        ArrowIcon(rotationDeg = Display.arrowRotation(peer.bearingDeg, myHeadingDeg.toDouble()))
+        // arrow rotation = bearingToPeer - myHeading (tested in Task 3);
+        // a peer within ~5 m has no meaningful direction -> show a ball
+        ArrowIcon(
+            rotationDeg = Display.arrowRotation(peer.bearingDeg, myHeadingDeg.toDouble()),
+            ball = peer.distanceMeters < 5.0
+        )
         Spacer(modifier = Modifier.size(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
