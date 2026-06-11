@@ -33,7 +33,7 @@ class NearbyTransport(
     private val client: ConnectionsClient = Nearby.getConnectionsClient(context)
     private val serviceId = "com.meshwalkie.$roomCode"
     private val connected = CopyOnWriteArraySet<String>()
-    private var handler: ((ByteArray) -> Unit)? = null
+    @Volatile private var handler: ((ByteArray) -> Unit)? = null
 
     private val payloadCallback = object : PayloadCallback() {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
