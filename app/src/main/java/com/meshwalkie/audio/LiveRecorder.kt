@@ -4,12 +4,16 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import kotlin.math.abs
 
 /**
  * Continuous mic capture for live mode. Unlike [PttRecorder] (one clip per hold)
  * this loops, emitting a fixed-size PCM chunk every [CHUNK_MS] until [stop], so
  * each chunk can be encoded and streamed immediately - the receiver plays them
  * back-to-back via a streaming AudioTrack. Blocking; run on an IO thread.
+ *
+ * With [voiceOnly] it gates on speech: silent chunks are dropped (no constant
+ * room-noise stream), but a short hangover keeps the tail of each phrase.
  */
 class LiveRecorder {
 
@@ -17,7 +21,11 @@ class LiveRecorder {
 
     /** Caller (MeshService) holds RECORD_AUDIO before calling. */
     @SuppressLint("MissingPermission")
-    fun run(audioSource: Int = MediaRecorder.AudioSource.MIC, onChunk: (ShortArray) -> Unit) {
+    fun run(
+        audioSource: Int = MediaRecorder.AudioSource.MIC,
+        voiceOnly: Boolean = false,
+        onChunk: (ShortArray) -> Unit
+    ) {
         running = true
         val minBuf = AudioRecord.getMinBufferSize(
             OpusCodec.SAMPLE_RATE,
@@ -32,6 +40,7 @@ class LiveRecorder {
             maxOf(minBuf, CHUNK_SAMPLES * 2 * 2)
         )
         val frame = ShortArray(OpusCodec.FRAME_SAMPLES)
+        var hangover = 0
         try {
             recorder.startRecording()
             val chunk = ArrayList<Short>(CHUNK_SAMPLES)
@@ -40,15 +49,26 @@ class LiveRecorder {
                 if (read <= 0) continue
                 for (i in 0 until read) chunk += frame[i]
                 if (chunk.size >= CHUNK_SAMPLES) {
-                    onChunk(chunk.toShortArray())
+                    val arr = chunk.toShortArray()
+                    val speech = isSpeech(arr)
+                    if (speech) hangover = HANGOVER_CHUNKS
+                    if (!voiceOnly || speech || hangover > 0) {
+                        onChunk(arr)
+                        if (!speech && hangover > 0) hangover--
+                    }
                     chunk.clear()
                 }
             }
-            if (chunk.isNotEmpty()) onChunk(chunk.toShortArray())   // flush tail
         } finally {
             recorder.stop()
             recorder.release()
         }
+    }
+
+    private fun isSpeech(pcm: ShortArray): Boolean {
+        var sum = 0L
+        for (s in pcm) sum += abs(s.toInt())
+        return pcm.isNotEmpty() && sum / pcm.size > SPEECH_THRESHOLD
     }
 
     fun stop() { running = false }
@@ -56,5 +76,7 @@ class LiveRecorder {
     private companion object {
         const val CHUNK_MS = 240
         const val CHUNK_SAMPLES = OpusCodec.SAMPLE_RATE * CHUNK_MS / 1000   // 3840 @ 16 kHz
+        const val SPEECH_THRESHOLD = 300    // mean abs amplitude; below = silence/room
+        const val HANGOVER_CHUNKS = 3       // keep streaming ~0.7s after last speech
     }
 }

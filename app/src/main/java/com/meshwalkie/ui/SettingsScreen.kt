@@ -15,7 +15,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,8 +39,7 @@ import com.meshwalkie.service.Settings
 fun SettingsScreen(onBack: () -> Unit) {
 
     val dark by Settings.darkMode.collectAsStateWithLifecycle()
-    val vadOn by Settings.vadEnabled.collectAsStateWithLifecycle()
-    val vadSens by Settings.vadSensitivity.collectAsStateWithLifecycle()
+    val liveVoiceOnly by Settings.liveVoiceOnly.collectAsStateWithLifecycle()
     val btHeadsetOn by Settings.btHeadset.collectAsStateWithLifecycle()
     val netHost by Settings.internetHost.collectAsStateWithLifecycle()
     val netClient by Settings.internetClient.collectAsStateWithLifecycle()
@@ -231,17 +229,13 @@ fun SettingsScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Auto-talk (VAD, hands-free)", style = MaterialTheme.typography.labelLarge)
-            Switch(checked = vadOn, onCheckedChange = { Settings.setVadEnabled(it) })
+            Text("Live: only stream when speaking", style = MaterialTheme.typography.labelLarge)
+            Switch(checked = liveVoiceOnly, onCheckedChange = { Settings.setLiveVoiceOnly(it) })
         }
-        if (vadOn) {
-            Text("Sensitivity: $vadSens (higher = picks up quieter)", style = MaterialTheme.typography.bodySmall)
-            Slider(
-                value = vadSens.toFloat(),
-                onValueChange = { Settings.setVadSensitivity(it.toInt()) },
-                valueRange = 0f..100f
-            )
-        }
+        Text(
+            "Live mode drops silent/room-noise chunks and only sends your voice. Off = continuous stream (e.g. baby monitor).",
+            style = MaterialTheme.typography.bodySmall
+        )
 
         Spacer(Modifier.height(20.dp))
 

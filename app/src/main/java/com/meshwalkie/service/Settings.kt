@@ -17,8 +17,7 @@ object Settings {
     const val DEFAULT_GROUP = "channel-1"
     private const val KEY_QUICKTEXTS = "quick_texts"
     private val DEFAULT_QUICKTEXTS = listOf("OK", "Wait", "Help!", "On my way", "Turning back", "Regroup")
-    private const val KEY_VAD = "vad_enabled"
-    private const val KEY_VAD_SENS = "vad_sensitivity"
+    private const val KEY_LIVE_VOICE_ONLY = "live_voice_only"
     private const val KEY_BT_HEADSET = "bt_headset"
     private const val KEY_NET_HOST = "net_host"
     private const val KEY_NET_CLIENT = "net_client"
@@ -53,13 +52,9 @@ object Settings {
     private val _quickTexts = MutableStateFlow(DEFAULT_QUICKTEXTS)
     val quickTexts: StateFlow<List<String>> = _quickTexts
 
-    /** Voice-activated transmit (hands-free): auto-send a clip when speech is detected. */
-    private val _vadEnabled = MutableStateFlow(false)
-    val vadEnabled: StateFlow<Boolean> = _vadEnabled
-
-    /** VAD sensitivity 0..100; higher = picks up quieter sound (lower energy threshold). */
-    private val _vadSensitivity = MutableStateFlow(50)
-    val vadSensitivity: StateFlow<Int> = _vadSensitivity
+    /** Live mode: only stream when speech is detected (drop silent/room-noise chunks). */
+    private val _liveVoiceOnly = MutableStateFlow(true)
+    val liveVoiceOnly: StateFlow<Boolean> = _liveVoiceOnly
 
     /** Route the mic capture to a connected Bluetooth headset (SCO). */
     private val _btHeadset = MutableStateFlow(false)
@@ -121,8 +116,7 @@ object Settings {
         val saved = prefs.getString(KEY_QUICKTEXTS, null)
         _quickTexts.value = saved?.split("\n")?.map { it.trim() }?.filter { it.isNotEmpty() }
             ?.ifEmpty { DEFAULT_QUICKTEXTS } ?: DEFAULT_QUICKTEXTS
-        _vadEnabled.value = prefs.getBoolean(KEY_VAD, false)
-        _vadSensitivity.value = prefs.getInt(KEY_VAD_SENS, 50)
+        _liveVoiceOnly.value = prefs.getBoolean(KEY_LIVE_VOICE_ONLY, true)
         _btHeadset.value = prefs.getBoolean(KEY_BT_HEADSET, false)
         _internetHost.value = prefs.getBoolean(KEY_NET_HOST, false)
         _internetClient.value = prefs.getBoolean(KEY_NET_CLIENT, false)
@@ -202,17 +196,10 @@ object Settings {
             .edit().putBoolean(KEY_NET_CLIENT, on).apply()
     }
 
-    fun setVadEnabled(on: Boolean) {
-        _vadEnabled.value = on
+    fun setLiveVoiceOnly(on: Boolean) {
+        _liveVoiceOnly.value = on
         appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putBoolean(KEY_VAD, on).apply()
-    }
-
-    fun setVadSensitivity(value: Int) {
-        val v = value.coerceIn(0, 100)
-        _vadSensitivity.value = v
-        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putInt(KEY_VAD_SENS, v).apply()
+            .edit().putBoolean(KEY_LIVE_VOICE_ONLY, on).apply()
     }
 
     /** Save preset quick-texts (max 8, non-empty). */

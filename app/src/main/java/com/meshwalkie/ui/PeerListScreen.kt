@@ -61,7 +61,6 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     val myLoc by MeshBus.myLocation.collectAsStateWithLifecycle()
     val waypoints by MeshBus.waypoints.collectAsStateWithLifecycle()
     val target by MeshBus.target.collectAsStateWithLifecycle()
-    val vadOn by Settings.vadEnabled.collectAsStateWithLifecycle()
     val liveOn by MeshBus.liveBroadcasting.collectAsStateWithLifecycle()
     val hosts by MeshBus.hosts.collectAsStateWithLifecycle()
     val myHostIp by MeshBus.myHostIp.collectAsStateWithLifecycle()
@@ -242,24 +241,15 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
         ) {
             if (liveOn) {
                 Text("🔴 LIVE", style = MaterialTheme.typography.titleMedium, color = Color(0xFFD32F2F))
-            } else if (!vadOn) {
-                PttButton(onPtt = { pressed -> MeshBus.pttHandler?.invoke(pressed) })
             } else {
-                Text("Auto-talk active", style = MaterialTheme.typography.titleMedium)
-            }
-            Column(
-                modifier = Modifier.align(Alignment.CenterStart),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("Live", style = MaterialTheme.typography.labelMedium)
-                Switch(checked = liveOn, onCheckedChange = { MeshBus.liveBroadcastHandler?.invoke(it) })
+                PttButton(onPtt = { pressed -> MeshBus.pttHandler?.invoke(pressed) })
             }
             Column(
                 modifier = Modifier.align(Alignment.CenterEnd),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Auto-talk", style = MaterialTheme.typography.labelMedium)
-                Switch(checked = vadOn, onCheckedChange = { Settings.setVadEnabled(it) })
+                Text("Live", style = MaterialTheme.typography.labelMedium)
+                Switch(checked = liveOn, onCheckedChange = { MeshBus.liveBroadcastHandler?.invoke(it) })
             }
         }
 

@@ -19,7 +19,6 @@ import android.os.IBinder
 import com.meshwalkie.util.L
 import com.meshwalkie.audio.AudioRoute
 import com.meshwalkie.audio.PttRecorder
-import com.meshwalkie.audio.VadRecorder
 import com.meshwalkie.audio.VoicePlayer
 import com.meshwalkie.audio.LiveRecorder
 import com.meshwalkie.audio.VoiceSender
@@ -42,7 +41,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -71,8 +69,6 @@ class MeshService : Service() {
     private val headingSource by lazy { HeadingSource(this) }
     private val voicePlayer = VoicePlayer()
     private val recorder = PttRecorder()
-    private val vad = VadRecorder()
-    private var vadJob: Job? = null
     private val liveRecorder = LiveRecorder()
     private var liveJob: Job? = null
     private val liveBroadcasting = AtomicBoolean(false)
@@ -81,7 +77,9 @@ class MeshService : Service() {
     private val proximityListener = object : SensorEventListener {
         override fun onSensorChanged(e: SensorEvent) {
             val max = proximitySensor?.maximumRange ?: 5f
-            applyProximity(near = e.values[0] < max && e.values[0] < 5f)
+            val near = e.values[0] < max && e.values[0] < 5f
+            L.i("Prox", "value=${e.values[0]} max=$max near=$near toggle=${Settings.earpieceProximity.value} bt=${Settings.btHeadset.value}")
+            applyProximity(near = near)
         }
         override fun onAccuracyChanged(s: Sensor?, a: Int) {}
     }
@@ -187,23 +185,6 @@ class MeshService : Service() {
         // When the toggle is switched off, drop any earpiece routing immediately.
         scope.launch {
             Settings.earpieceProximity.collect { on -> if (!on) routeEarpiece(false) }
-        }
-
-        // Voice-activated transmit: (re)start the VAD loop when enabled or when
-        // the sensitivity changes; stop it when disabled.
-        scope.launch {
-            combine(Settings.vadEnabled, Settings.vadSensitivity) { en, sens -> en to sens }
-                .collect { (enabled, sens) ->
-                    vad.stop()
-                    vadJob?.join()
-                    vadJob = null
-                    if (enabled) {
-                        val threshold = vad.thresholdFor(sens)
-                        vadJob = scope.launch(Dispatchers.IO) {
-                            vad.run(threshold, micSource()) { pcm -> emitClip(pcm) }
-                        }
-                    }
-                }
         }
 
         // Mute-all also silences received voice playback.
@@ -384,12 +365,15 @@ class MeshService : Service() {
             if (Build.VERSION.SDK_INT >= 31) {
                 if (on) {
                     am.mode = AudioManager.MODE_IN_COMMUNICATION
-                    am.availableCommunicationDevices
-                        .firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_EARPIECE }
-                        ?.let { am.setCommunicationDevice(it) }
+                    val devs = am.availableCommunicationDevices
+                    L.i("Route", "earpiece ON; devices=${devs.map { it.type }}")
+                    val ear = devs.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_EARPIECE }
+                    val ok = ear?.let { am.setCommunicationDevice(it) }
+                    L.i("Route", "earpiece dev=${ear?.type} setResult=$ok current=${am.communicationDevice?.type}")
                 } else {
                     am.clearCommunicationDevice()
                     am.mode = AudioManager.MODE_NORMAL
+                    L.i("Route", "earpiece OFF -> loudspeaker")
                 }
             } else {
                 @Suppress("DEPRECATION")
@@ -434,17 +418,12 @@ class MeshService : Service() {
      * broadcasts, others just listen.
      */
     private fun onLiveBroadcast(on: Boolean) {
-        if (on && Settings.vadEnabled.value) {
-            MeshBus.publishStatus("Turn off Auto-talk (VAD) before going live")
-            MeshBus.publishLiveBroadcasting(false)
-            return
-        }
         if (on) {
             if (!liveBroadcasting.compareAndSet(false, true)) return
             MeshBus.publishLiveBroadcasting(true)
             voicePlayer.setTransmitting(true)   // half-duplex: don't play incoming while live
             liveJob = scope.launch(Dispatchers.IO) {
-                liveRecorder.run(audioSource = micSource()) { chunk ->
+                liveRecorder.run(audioSource = micSource(), voiceOnly = Settings.liveVoiceOnly.value) { chunk ->
                     if (currentLinks > 0) {
                         voiceSender.sendClip(chunk, System.currentTimeMillis(),
                             Settings.voiceBitrate.value, live = true)
@@ -460,8 +439,6 @@ class MeshService : Service() {
     }
 
     private fun onPtt(pressed: Boolean) {
-        // VAD owns the mic when enabled; ignore manual PTT to avoid two AudioRecords.
-        if (Settings.vadEnabled.value) return
         if (liveBroadcasting.get()) return   // live owns the mic
 
         if (pressed) {
@@ -651,7 +628,6 @@ class MeshService : Service() {
         pttHeld.set(false)
         liveBroadcasting.set(false)
         liveRecorder.stop()
-        vad.stop()
         stopHost()
         disconnectClient()
         applyHeadsetRouting(false)
