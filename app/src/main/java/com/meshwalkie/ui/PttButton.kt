@@ -5,8 +5,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 
 /** Press-and-hold: onPtt(true) on press, onPtt(false) on release/cancel. */
@@ -42,10 +42,11 @@ fun PttButton(onPtt: (pressed: Boolean) -> Unit, modifier: Modifier = Modifier) 
                 )
             }
     ) {
-        Text(
-            text = "🎤",
-            color = Color.White,
-            style = MaterialTheme.typography.displayMedium
+        Icon(
+            painter = painterResource(android.R.drawable.ic_btn_speak_now),
+            contentDescription = "Push to talk",
+            tint = Color.White,
+            modifier = Modifier.size(56.dp)
         )
     }
 }
