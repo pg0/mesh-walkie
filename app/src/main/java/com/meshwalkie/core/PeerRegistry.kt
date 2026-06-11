@@ -20,7 +20,9 @@ data class PeerRosterEntry(
     val id: String,
     val name: String,
     val freshness: Freshness,
-    val hasPosition: Boolean
+    val hasPosition: Boolean,
+    /** 0 = direct neighbour, N = reached via N relays. Coarse GPS-free proximity. */
+    val hops: Int
 )
 
 /**
@@ -33,7 +35,8 @@ class PeerRegistry {
         var lat: Double? = null,
         var lon: Double? = null,
         var positionTimestampMs: Long = 0L,
-        var lastSeenMs: Long = 0L
+        var lastSeenMs: Long = 0L,
+        var hops: Int = 0
     )
 
     private val peers = LinkedHashMap<String, PeerState>()
@@ -47,6 +50,8 @@ class PeerRegistry {
     fun onPacket(packet: Packet, receivedAtMs: Long) {
         val state = peers.getOrPut(packet.originId) { PeerState() }
         state.lastSeenMs = maxOf(state.lastSeenMs, receivedAtMs)
+        // Hops travelled = how much TTL was spent reaching us. Full TTL = direct.
+        state.hops = (Packet.DEFAULT_TTL - packet.ttl).coerceAtLeast(0)
         when (packet) {
             is Packet.Position -> if (packet.timestampMs >= state.positionTimestampMs) {
                 state.lat = packet.lat
@@ -85,9 +90,10 @@ class PeerRegistry {
                 id = id,
                 name = s.name ?: id,
                 freshness = freshnessOf(nowMs - s.lastSeenMs),
-                hasPosition = s.lat != null && s.lon != null
+                hasPosition = s.lat != null && s.lon != null,
+                hops = s.hops
             )
-        }.sortedBy { it.name }
+        }.sortedWith(compareBy({ it.hops }, { it.name }))
 
     private fun freshnessOf(age: Long): Freshness = when {
         age < FRESH_MS -> Freshness.FRESH

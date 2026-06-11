@@ -127,8 +127,9 @@ fun RosterRow(entry: PeerRosterEntry) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(entry.name, style = MaterialTheme.typography.titleMedium)
+            val proximity = if (entry.hops == 0) "direct (near)" else "${entry.hops} hops (~${entry.hops * 75} m)"
             Text(
-                "ID ${entry.id}" + if (entry.hasPosition) " - position known" else " - no GPS",
+                "$proximity - ID ${entry.id}",
                 style = MaterialTheme.typography.bodySmall
             )
         }

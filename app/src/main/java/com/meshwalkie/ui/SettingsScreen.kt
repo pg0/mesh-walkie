@@ -72,6 +72,10 @@ fun SettingsScreen(onBack: () -> Unit) {
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 4.dp)
         )
+        TextButton(
+            onClick = { groupField = Settings.DEFAULT_GROUP },
+            modifier = Modifier.padding(top = 2.dp)
+        ) { Text("Use default channel (${Settings.DEFAULT_GROUP})") }
 
         Spacer(Modifier.height(20.dp))
 
