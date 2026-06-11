@@ -10,7 +10,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
-import androidx.lifecycle.Lifecycle
 import com.meshwalkie.service.MeshService
 
 class MainActivity : ComponentActivity() {
@@ -18,11 +17,18 @@ class MainActivity : ComponentActivity() {
     // Guards against starting the service twice (permission callback + onResume).
     private var serviceStarted = false
 
-    // Set when permissions are granted while the activity is not yet RESUMED.
+    // Set when permissions are granted while the activity is not yet resumed.
     // A foreground-service start in that window throws
     // ForegroundServiceStartNotAllowedException on API 31+, so we defer the
     // actual start to onResume.
     private var pendingStart = false
+
+    // True between onResume and onPause. We cannot rely on
+    // lifecycle.currentState here: AndroidX dispatches ON_RESUME AFTER the
+    // activity's onResume() returns, so inside onResume the state still reads
+    // STARTED. Being inside onResume already means the app is foreground-visible,
+    // which is exactly when a foreground-service start is permitted.
+    private var resumed = false
 
     private val requestPermissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
@@ -43,8 +49,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Now at least RESUMED: safe to start a foreground service.
+        resumed = true
+        // Foreground-visible now: safe to start a foreground service.
         maybeStartMeshService()
+    }
+
+    override fun onPause() {
+        resumed = false
+        super.onPause()
     }
 
     private fun ensurePermissionsThenStart() {
@@ -73,13 +85,12 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Starts the foreground service exactly once, and only when the activity is
-     * at least RESUMED. If called too early (e.g. from the permission-result
-     * callback before onResume), it no-ops and onResume retries.
+     * Starts the foreground service exactly once, and only while the activity is
+     * resumed (foreground-visible). If called too early (e.g. from the
+     * permission-result callback before onResume), it no-ops and onResume retries.
      */
     private fun maybeStartMeshService() {
-        if (serviceStarted || !pendingStart) return
-        if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return
+        if (serviceStarted || !pendingStart || !resumed) return
         try {
             startForegroundService(Intent(this, MeshService::class.java))
             serviceStarted = true
