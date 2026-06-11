@@ -43,9 +43,9 @@ fun PttButton(onPtt: (pressed: Boolean) -> Unit, modifier: Modifier = Modifier) 
             }
     ) {
         Text(
-            text = if (held) "ON AIR" else "HOLD TO TALK",
+            text = "🎤",
             color = Color.White,
-            style = MaterialTheme.typography.labelLarge
+            style = MaterialTheme.typography.displayMedium
         )
     }
 }
