@@ -38,7 +38,6 @@ fun SettingsScreen(onBack: () -> Unit) {
     val dark by Settings.darkMode.collectAsStateWithLifecycle()
     val vadOn by Settings.vadEnabled.collectAsStateWithLifecycle()
     val vadSens by Settings.vadSensitivity.collectAsStateWithLifecycle()
-    val breadcrumbOn by Settings.breadcrumbEnabled.collectAsStateWithLifecycle()
     val btHeadsetOn by Settings.btHeadset.collectAsStateWithLifecycle()
     val savedName by Settings.displayName.collectAsStateWithLifecycle()
     val savedGroup by Settings.groupCode.collectAsStateWithLifecycle()
@@ -142,17 +141,6 @@ fun SettingsScreen(onBack: () -> Unit) {
                 onValueChange = { Settings.setVadSensitivity(it.toInt()) },
                 valueRange = 0f..100f
             )
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("Record breadcrumb trail", style = MaterialTheme.typography.labelLarge)
-            Switch(checked = breadcrumbOn, onCheckedChange = { Settings.setBreadcrumbEnabled(it) })
         }
 
         Spacer(Modifier.height(20.dp))

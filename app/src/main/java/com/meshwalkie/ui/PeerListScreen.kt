@@ -59,7 +59,6 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
     val myLoc by MeshBus.myLocation.collectAsStateWithLifecycle()
     val waypoints by MeshBus.waypoints.collectAsStateWithLifecycle()
     val target by MeshBus.target.collectAsStateWithLifecycle()
-    val breadcrumbs by MeshBus.breadcrumbs.collectAsStateWithLifecycle()
     val vadOn by Settings.vadEnabled.collectAsStateWithLifecycle()
     var viewMode by remember { mutableIntStateOf(0) }   // 0 list, 1 radar, 2 map
     var showType by remember { mutableStateOf(false) }
@@ -109,7 +108,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
         when (viewMode) {
             1 -> RadarView(peers, waypoints, heading, Modifier.weight(1f).fillMaxWidth().clipToBounds())
             2 -> MapScreen(
-                peers, myLoc, waypoints, target, breadcrumbs,
+                peers, myLoc, waypoints, target,
                 onSetTarget = { la, lo -> MeshBus.setTarget(la, lo) },
                 Modifier.weight(1f).fillMaxWidth().clipToBounds()
             )
@@ -168,7 +167,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                 reverseLayout = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 120.dp)
+                    .heightIn(max = 56.dp)   // ~2 lines, so it never shrinks the map
                     .padding(top = 8.dp)
             ) {
                 items(messages.asReversed()) { m ->
@@ -196,9 +195,6 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             QuickTextWheel(onSend = { MeshBus.sendTextHandler?.invoke(it) })
             TextButton(onClick = { showType = true }) { Text("Msg") }
             TextButton(onClick = { showWp = true }) { Text("📍Waypoint") }
-            if (breadcrumbs.isNotEmpty()) {
-                TextButton(onClick = { MeshBus.guideBackHandler?.invoke() }) { Text("Guide back") }
-            }
         }
         Box(
             modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),

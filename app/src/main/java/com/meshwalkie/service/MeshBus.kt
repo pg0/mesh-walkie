@@ -33,14 +33,6 @@ object MeshBus {
     fun setTarget(lat: Double, lon: Double) { _target.value = lat to lon }
     fun clearTarget() { _target.value = null }
 
-    /** My recorded breadcrumb trail (oldest first), for retrace / map polyline. */
-    private val _breadcrumbs = MutableStateFlow<List<Pair<Double, Double>>>(emptyList())
-    val breadcrumbs: StateFlow<List<Pair<Double, Double>>> = _breadcrumbs
-
-    fun publishBreadcrumbs(list: List<Pair<Double, Double>>) { _breadcrumbs.value = list }
-
-    /** Set by the service; UI calls it to retrace the trail back to the start. */
-    @Volatile var guideBackHandler: (() -> Unit)? = null
 
     private val _myHeading = MutableStateFlow(0f)
     val myHeading: StateFlow<Float> = _myHeading
