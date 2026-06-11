@@ -1,7 +1,6 @@
 package com.meshwalkie.nearby
 
 import android.content.Context
-import android.util.Log
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.AdvertisingOptions
 import com.google.android.gms.nearby.connection.ConnectionInfo
@@ -16,6 +15,7 @@ import com.google.android.gms.nearby.connection.PayloadCallback
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate
 import com.google.android.gms.nearby.connection.Strategy
 import com.meshwalkie.core.Transport
+import com.meshwalkie.util.L
 import java.util.concurrent.CopyOnWriteArraySet
 
 /**
@@ -53,21 +53,21 @@ class NearbyTransport(
         override fun onConnectionInitiated(endpointId: String, info: ConnectionInfo) {
             // Cluster topology: accept everyone in the room. Link-level crypto
             // is Nearby's; payload E2E crypto is phase 3.
-            Log.i(TAG, "connection initiated by/with ${info.endpointName} ($endpointId), accepting")
+            L.i(TAG, "connection initiated by/with ${info.endpointName} ($endpointId), accepting")
             client.acceptConnection(endpointId, payloadCallback)
         }
         override fun onConnectionResult(endpointId: String, result: ConnectionResolution) {
             if (result.status.isSuccess) {
                 connected += endpointId
-                Log.i(TAG, "connected to $endpointId (${connected.size} links)")
+                L.i(TAG, "connected to $endpointId (${connected.size} links)")
                 onLinksChanged?.invoke(connected.size)
             } else {
-                Log.w(TAG, "connection to $endpointId failed: ${result.status}")
+                L.w(TAG, "connection to $endpointId failed: ${result.status}")
             }
         }
         override fun onDisconnected(endpointId: String) {
             connected -= endpointId
-            Log.i(TAG, "disconnected from $endpointId")
+            L.i(TAG, "disconnected from $endpointId")
             onLinksChanged?.invoke(connected.size)
         }
     }
@@ -80,17 +80,17 @@ class NearbyTransport(
             // only the lexicographically-smaller name initiates; the other side
             // receives onConnectionInitiated and accepts.
             val theirName = info.endpointName
-            Log.i(TAG, "endpoint found: $theirName ($endpointId)")
+            L.i(TAG, "endpoint found: $theirName ($endpointId)")
             if (deviceName < theirName) {
-                Log.i(TAG, "initiating connection to $theirName ($deviceName < $theirName)")
+                L.i(TAG, "initiating connection to $theirName ($deviceName < $theirName)")
                 client.requestConnection(deviceName, endpointId, lifecycleCallback)
-                    .addOnFailureListener { e -> Log.w(TAG, "requestConnection: $e") }
+                    .addOnFailureListener { e -> L.w(TAG, "requestConnection: $e") }
             } else {
-                Log.i(TAG, "waiting for $theirName to initiate ($deviceName >= $theirName)")
+                L.i(TAG, "waiting for $theirName to initiate ($deviceName >= $theirName)")
             }
         }
         override fun onEndpointLost(endpointId: String) {
-            Log.i(TAG, "endpoint lost: $endpointId")
+            L.i(TAG, "endpoint lost: $endpointId")
         }
     }
 
@@ -99,12 +99,12 @@ class NearbyTransport(
         client.startAdvertising(
             deviceName, serviceId, lifecycleCallback,
             AdvertisingOptions.Builder().setStrategy(Strategy.P2P_CLUSTER).setLowPower(true).build()
-        ).addOnFailureListener { e -> Log.e(TAG, "startAdvertising: $e") }
+        ).addOnFailureListener { e -> L.e(TAG, "startAdvertising: $e") }
 
         client.startDiscovery(
             serviceId, discoveryCallback,
             DiscoveryOptions.Builder().setStrategy(Strategy.P2P_CLUSTER).setLowPower(true).build()
-        ).addOnFailureListener { e -> Log.e(TAG, "startDiscovery: $e") }
+        ).addOnFailureListener { e -> L.e(TAG, "startDiscovery: $e") }
     }
 
     fun stop() {
@@ -118,7 +118,7 @@ class NearbyTransport(
         val targets = connected.toList()
         if (targets.isNotEmpty()) {
             client.sendPayload(targets, Payload.fromBytes(bytes))
-                .addOnFailureListener { e -> Log.w(TAG, "sendPayload: $e") }
+                .addOnFailureListener { e -> L.w(TAG, "sendPayload: $e") }
         }
     }
 

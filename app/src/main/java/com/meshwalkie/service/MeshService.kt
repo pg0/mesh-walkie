@@ -12,7 +12,7 @@ import android.media.AudioManager
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
+import com.meshwalkie.util.L
 import com.meshwalkie.audio.PttRecorder
 import com.meshwalkie.audio.VadRecorder
 import com.meshwalkie.audio.VoicePlayer
@@ -98,9 +98,9 @@ class MeshService : Service() {
             // ForegroundServiceStartNotAllowedException (API 31+) and
             // SecurityException are both subclasses of Exception; catch broadly.
             if (Build.VERSION.SDK_INT >= 31 && e is ForegroundServiceStartNotAllowedException) {
-                Log.w(TAG, "startForeground not allowed, stopping", e)
+                L.w(TAG, "startForeground not allowed, stopping", e)
             } else {
-                Log.w(TAG, "startForeground failed, stopping", e)
+                L.w(TAG, "startForeground failed, stopping", e)
             }
             stopSelf()
             return START_NOT_STICKY
@@ -414,7 +414,7 @@ class MeshService : Service() {
         MeshBus.addHost(HostInfo(p.originId, p.name, p.ip, p.port))
         val client = Settings.internetClient.value
         val hosting = Settings.internetHost.value
-        Log.i(TAG, "host announced: ${p.name} [${p.ip}]:${p.port} - client=$client hosting=$hosting linked=${serverLink != null}")
+        L.i(TAG, "host announced: ${p.name} [${p.ip}]:${p.port} - client=$client hosting=$hosting linked=${serverLink != null}")
         // Client mode: auto-join the first host that shows up.
         if (client && serverLink == null && !hosting) {
             joinHost(p.ip, p.port)
@@ -455,7 +455,7 @@ class MeshService : Service() {
     }
 
     private fun joinHost(ip: String, port: Int) {
-        Log.i(TAG, "joinHost [$ip]:$port")
+        L.i(TAG, "joinHost [$ip]:$port")
         disconnectClient()
         val link = ServerLink(ip, port)
         link.onState = { c ->

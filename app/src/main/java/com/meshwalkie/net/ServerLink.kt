@@ -1,7 +1,7 @@
 package com.meshwalkie.net
 
-import android.util.Log
 import com.meshwalkie.core.Transport
+import com.meshwalkie.util.L
 import java.io.BufferedInputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
@@ -25,12 +25,12 @@ class ServerLink(private val host: String, private val port: Int) : Transport {
         running = true
         Thread {
             try {
-                Log.i(TAG, "connecting to [$host]:$port")
+                L.i(TAG, "connecting to [$host]:$port")
                 val s = Socket()
                 s.connect(InetSocketAddress(host, port), 8000)
                 socket = s
                 out = DataOutputStream(s.getOutputStream())
-                Log.i(TAG, "connected to [$host]:$port")
+                L.i(TAG, "connected to [$host]:$port")
                 onState?.invoke(true)
                 val inp = DataInputStream(BufferedInputStream(s.getInputStream()))
                 while (running) {
@@ -40,7 +40,7 @@ class ServerLink(private val host: String, private val port: Int) : Transport {
                     handler?.invoke(b)
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "connect/read failed for [$host]:$port: $e")
+                L.w(TAG, "connect/read failed for [$host]:$port: $e")
             } finally {
                 onState?.invoke(false)
                 close()

@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshwalkie.service.MeshService
 import com.meshwalkie.service.Settings
+import com.meshwalkie.util.L
 
 class MainActivity : ComponentActivity() {
 
@@ -159,7 +159,7 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             // Do not crash if the platform still refuses the start; it will be
             // retried on the next onResume.
-            Log.w(TAG, "startForegroundService failed, will retry on resume", e)
+            L.w(TAG, "startForegroundService failed, will retry on resume", e)
         }
     }
 
