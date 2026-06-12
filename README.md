@@ -1,75 +1,85 @@
+<div align="center">
+
 # Mesh Walkie
 
-## What is this?
+### Turn your phone into a walkie-talkie. No signal, no SIM, no internet.
 
-Mesh Walkie is a walkie-talkie app for Android phones.
+![Android](https://img.shields.io/badge/Android-10%2B-3DDC84?logo=android&logoColor=white)
+![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white)
+![Release](https://img.shields.io/github/v/release/pg0/mesh-walkie?color=blue)
+![Works offline](https://img.shields.io/badge/works-offline-success)
+![No account](https://img.shields.io/badge/no-account-success)
 
-You know how a walkie-talkie lets you press a button and talk to your friend far
-away? This app turns your phone into one. No SIM card needed. No internet needed.
-No paying for anything.
-
-## How does it work?
-
-Phones talk to each other straight through the air using Bluetooth, a tiny radio
-that is already inside every phone. Your words hop from phone to phone like
-passing a note around a classroom.
-
-That last part is the cool trick. If your friend is too far away for your phone
-to reach, but someone else is standing in the middle, your message hops through
-that middle phone to reach your friend. The more friends you have, the further
-your voice can travel. That is what "mesh" means: everybody helps pass the
-message along.
-
-## What can it do?
-
-- Hold the big button and talk. Everyone in your group hears you.
-- See a little arrow for each friend that points where they are and how far away,
-  like "600 m" to the north.
-- A map and a radar screen so you can see your whole group.
-- Send quick text messages like "OK" or "On my way" without typing.
-- Drop a pin on the map to say "meet here".
-- A live mode that streams your voice the whole time, so you can even use a phone
-  as a baby monitor.
-- Works when there is no phone signal at all, like in the mountains, at a big
-  festival, or deep in a forest.
-
-## Why is it neat?
-
-Normal phone calls and chat apps stop working when there is no signal. This one
-keeps working because the phones talk to each other directly. It is like having
-your own little radio network that you carry in your pocket.
-
-## Is it private?
-
-Yes. Your group picks a secret channel name, and only phones that know that name
-can hear you. Messages are scrambled so other people cannot listen in.
+</div>
 
 ---
 
-## For developers
+> Phones talk to each other **directly over Bluetooth**. Your voice hops from
+> phone to phone, so the more people in the group, the further it reaches.
+> Mountains, festivals, deep forest - anywhere with no signal.
+
+## What it does
+
+|  |  |
+|---|---|
+| **Talk** | Hold the button, your whole group hears you |
+| **Live** | Stream your voice non-stop (works as a baby monitor) |
+| **Find** | An arrow and distance to each friend, like `600 m N` |
+| **See** | Map and radar of the whole group |
+| **Type** | One-tap quick texts like `OK` or `On my way` |
+| **Pin** | Drop a `meet here` marker on the map |
+
+## How it works
+
+**1.** Pick a shared channel name (your group's secret word)
+**2.** Walk apart - phones link over Bluetooth on their own
+**3.** Talk. Out of range? Your voice hops through phones in between.
+
+## Private by design
+
+Only phones with your channel name can hear you. Voice is encrypted
+(AES-256-GCM). No accounts, no servers, nothing leaves the group.
+
+## Get it
+
+<div align="center">
+
+### [Download the latest APK](https://github.com/pg0/mesh-walkie/releases/latest)
+
+Allow *install from unknown sources*, then open and grant permissions.
+
+</div>
+
+---
+
+<details>
+<summary><b>For developers</b></summary>
+
+<br>
 
 Native Android (Kotlin, Jetpack Compose, foreground service). A pure-Kotlin core
 (`com.meshwalkie.core`) is JVM-unit-tested; the Android layer wraps Google Nearby
-Connections (BLE mesh) and an optional WiFi/LAN relay fallback.
+Connections (BLE mesh) with an optional WiFi/LAN relay fallback.
 
-- Voice: AMR-WB (MediaCodec) with an IMA ADPCM fallback, TTL + dedup flood mesh.
-- Live mode: continuous chunked streaming with optional speech gating.
-- Map: osmdroid (OpenStreetMap, no API key). Encryption: AES-256-GCM channel key.
+| Area | Tech |
+|---|---|
+| Transport | Google Nearby Connections (P2P_CLUSTER, BLE), TTL + dedup flood |
+| Voice | AMR-WB (MediaCodec), IMA ADPCM fallback, live chunk streaming |
+| Crypto | AES-256-GCM channel key |
+| Map | osmdroid (OpenStreetMap, no API key) |
+| UI | Jetpack Compose |
 
-### Build
+```bash
+# Build
+gradlew.bat :app:assembleDebug
 
-    gradlew.bat :app:assembleDebug
+# Unit tests (pure JVM core)
+gradlew.bat :app:testDebugUnitTest
+```
 
-### Unit tests (pure JVM core)
+Radio behaviour cannot be unit-tested; verify on 2-3 phones (same-room
+discovery, arrows, PTT, multi-hop relay, freshness, screen-off). A signed
+release needs a `keystore.properties` at the repo root pointing at your own
+keystore; that file and all `*.jks` keys are gitignored and never committed.
 
-    gradlew.bat :app:testDebugUnitTest
-
-### Run
-
-Install on 2 to 3 phones, grant all requested permissions, walk apart, hold the
-PTT button to talk. Radio behaviour cannot be unit-tested; verify on hardware
-(same room discovery, arrows, PTT, multi-hop relay, freshness, screen-off).
-
-A signed release build needs a `keystore.properties` at the repo root pointing at
-your own keystore. That file and all `*.jks` keys are gitignored and never
-committed.
+</details>
