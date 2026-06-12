@@ -47,7 +47,7 @@ import com.meshwalkie.core.WaypointView
 import com.meshwalkie.service.MeshBus
 import com.meshwalkie.service.Settings
 
-private val CHAT_ROW = 24.dp   // one chat line; viewport = 2x this, no partial line
+private val CHAT_ROW = 28.dp   // one chat line; viewport = 2x this, no partial line
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
