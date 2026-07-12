@@ -23,24 +23,53 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshwalkie.service.MeshBus
+import com.meshwalkie.service.Settings
 
 /**
- * Internet relay servers: pick an announced host (discovered over the mesh) to
- * join, or connect to one manually by IP. Leave disconnects.
+ * Internet relay servers: the standalone online server (Settings-backed
+ * address, stays connected until toggled off) plus mesh-announced hosts -
+ * pick one to join, or connect to one manually by IP. Leave disconnects.
  */
 @Composable
 fun ServerDialog(onDismiss: () -> Unit) {
     val hosts by MeshBus.hosts.collectAsStateWithLifecycle()
     val joined by MeshBus.joinedServer.collectAsStateWithLifecycle()
+    val onlineServerSetting by Settings.onlineServer.collectAsStateWithLifecycle()
+    val onlineEnabled by Settings.onlineEnabled.collectAsStateWithLifecycle()
+    val serverState by MeshBus.serverState.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
     var ip by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("51820") }
+    var onlineField by remember(onlineServerSetting) { mutableStateOf(onlineServerSetting) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Internet servers") },
         text = {
             Column {
+                Text("Online server")
+                OutlinedTextField(
+                    value = onlineField, onValueChange = { onlineField = it },
+                    label = { Text("server address (host[:port])") }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    serverState?.let { Text(it) } ?: Spacer(Modifier)
+                    AppTextButton(onClick = {
+                        if (onlineEnabled) {
+                            Settings.setOnlineEnabled(false)
+                        } else {
+                            Settings.setOnlineServer(onlineField)
+                            Settings.setOnlineEnabled(true)
+                        }
+                    }) { Text(if (onlineEnabled) "Disconnect" else "Connect") }
+                }
+                Spacer(Modifier.height(12.dp))
+                Text("Mesh hosts")
                 if (hosts.isEmpty()) {
                     Text("No hosts announced on the mesh yet.")
                 } else {

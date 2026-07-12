@@ -41,6 +41,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -92,6 +93,7 @@ class MeshService : Service() {
     @Volatile private var currentGroup = ""
     @Volatile private var currentLinks = 0
     @Volatile private var everConnected = false   // have we ever had a peer this session?
+    @Volatile private var serverConnected = false   // connected to the standalone online server
     @Volatile private var lastSentClipId = -1
     private val acksByClip = HashMap<Int, MutableSet<String>>()   // refClipId -> ackers
     private val outbox = ArrayDeque<ShortArray>()   // voice clips recorded while offline
@@ -207,6 +209,26 @@ class MeshService : Service() {
         MeshBus.joinHandler = { ip, port -> joinHost(ip, port) }
         MeshBus.leaveHostHandler = { disconnectClient() }
 
+        // Standalone online server: on when enabled, following the address
+        // setting (reconnects to a new address without a double-collect race
+        // since both flows fold through one combine() into one connect call).
+        scope.launch {
+            Settings.onlineEnabled.combine(Settings.onlineServer) { enabled, addr -> enabled to addr }
+                .collect { (enabled, addr) ->
+                    if (!enabled) {
+                        disconnectClient()
+                        return@collect
+                    }
+                    val parsed = NetUtil.parseHostPort(addr)
+                    if (parsed == null) {
+                        disconnectClient()
+                        MeshBus.publishStatus("No online server address set")
+                        return@collect
+                    }
+                    connectOnline(parsed.first, parsed.second)
+                }
+        }
+
         MeshBus.pttHandler = { pressed -> onPtt(pressed) }
         MeshBus.liveBroadcastHandler = { on -> onLiveBroadcast(on) }
         MeshBus.replayHandler = { voicePlayer.replayLast() }
@@ -303,6 +325,10 @@ class MeshService : Service() {
         MeshBus.publishStatus("Switching group…")
         transport.stop()
         bindTransport(group)
+        // bindTransport() builds a fresh composite (new channel key) - re-attach
+        // any surviving internet links so they aren't orphaned on channel switch.
+        hostServer?.let { composite.add(it) }
+        serverLink?.let { composite.add(it) }
     }
 
     private fun sendText(text: String) {
@@ -424,7 +450,7 @@ class MeshService : Service() {
             voicePlayer.setTransmitting(true)   // half-duplex: don't play incoming while live
             liveJob = scope.launch(Dispatchers.IO) {
                 liveRecorder.run(audioSource = micSource(), voiceOnly = Settings.liveVoiceOnly.value) { chunk ->
-                    if (currentLinks > 0) {
+                    if (currentLinks > 0 || serverConnected) {
                         voiceSender.sendClip(chunk, System.currentTimeMillis(),
                             Settings.voiceBitrate.value, live = true)
                     }
@@ -467,7 +493,7 @@ class MeshService : Service() {
      */
     private fun emitClip(pcm: ShortArray) {
         if (pcm.isEmpty()) return
-        if (currentLinks > 0) {
+        if (currentLinks > 0 || serverConnected) {
             lastSentClipId = voiceSender.sendClip(pcm, System.currentTimeMillis(), Settings.voiceBitrate.value)
             MeshBus.publishSentStatus("Sent - heard by 0")
         } else if (everConnected) {
@@ -513,8 +539,9 @@ class MeshService : Service() {
         val client = Settings.internetClient.value
         val hosting = Settings.internetHost.value
         L.i(TAG, "host announced: ${p.name} [${p.ip}]:${p.port} - client=$client hosting=$hosting linked=${serverLink != null}")
-        // Client mode: auto-join the first host that shows up.
-        if (client && serverLink == null && !hosting) {
+        // Client mode: auto-join the first host that shows up. The online
+        // server owns the client slot when it's enabled - don't steal it.
+        if (client && serverLink == null && !hosting && !Settings.onlineEnabled.value) {
             joinHost(p.ip, p.port)
         }
     }
@@ -570,10 +597,34 @@ class MeshService : Service() {
         serverLink = link
     }
 
+    /**
+     * Connect (or reconnect) to the standalone online server at [host]:[port].
+     * Unlike [joinHost], the link auto-reconnects on its own and a drop does
+     * NOT free the slot - it just flips to "Reconnecting…" and keeps retrying.
+     */
+    private fun connectOnline(host: String, port: Int) {
+        disconnectClient()
+        val link = ServerLink(host, port, autoReconnect = true)
+        link.onState = { c ->
+            serverConnected = c
+            if (c) everConnected = true
+            MeshBus.publishServerState(if (c) "Online" else "Reconnecting…")
+            MeshBus.publishJoinedServer(c)
+            if (c) flushOutbox()
+            MeshBus.publishStatus(statusText(currentLinks))
+        }
+        link.connect()
+        composite.add(link)
+        serverLink = link
+        MeshBus.publishServerState("Connecting…")
+    }
+
     private fun disconnectClient() {
         serverLink?.let { composite.remove(it); it.close() }
         serverLink = null
+        serverConnected = false
         MeshBus.publishJoinedServer(false)
+        MeshBus.publishServerState(null)
         MeshBus.publishStatus(statusText(currentLinks))
     }
 
@@ -595,9 +646,10 @@ class MeshService : Service() {
         publishPeers()
     }
 
-    private fun statusText(links: Int): String = when (links) {
-        0 -> "Searching for devices…"
-        1 -> "1 device connected"
+    private fun statusText(links: Int): String = when {
+        links == 0 && serverConnected -> "Online via server"
+        links == 0 -> "Searching for devices…"
+        links == 1 -> "1 device connected"
         else -> "$links devices connected"
     }
 

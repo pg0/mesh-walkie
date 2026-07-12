@@ -28,6 +28,7 @@
 | **See** | Map and radar of the whole group |
 | **Type** | One-tap quick texts like `OK` or `On my way` |
 | **Pin** | Drop a `meet here` marker on the map |
+| **Reach** | Out of mesh range? An optional online relay bridges the group over the internet |
 
 ## How it works
 
@@ -81,5 +82,11 @@ Radio behaviour cannot be unit-tested; verify on 2-3 phones (same-room
 discovery, arrows, PTT, multi-hop relay, freshness, screen-off). A signed
 release needs a `keystore.properties` at the repo root pointing at your own
 keystore; that file and all `*.jks` keys are gitignored and never committed.
+
+**Online relay** - phones off the same mesh reach each other through a
+standalone internet relay (blind ciphertext forwarding, no accounts, same
+length-framed wire protocol as the phone-hosted relay). See
+[`server/README.md`](server/README.md) for the protocol spec, how to run it
+(plain Python or Docker), and deployment notes.
 
 </details>

@@ -65,6 +65,15 @@ object MeshBus {
     val joinedServer: StateFlow<Boolean> = _joinedServer
     fun publishJoinedServer(on: Boolean) { _joinedServer.value = on }
 
+    /**
+     * Standalone online-server connection state: null = off, else one of
+     * "Connecting…", "Online", "Reconnecting…". Separate from [joinedServer],
+     * which drives the Leave button for mesh-announced hosts.
+     */
+    private val _serverState = MutableStateFlow<String?>(null)
+    val serverState: StateFlow<String?> = _serverState
+    fun publishServerState(text: String?) { _serverState.value = text }
+
     /** Number of clients connected to me while I host. */
     private val _hostClientCount = MutableStateFlow(0)
     val hostClientCount: StateFlow<Int> = _hostClientCount

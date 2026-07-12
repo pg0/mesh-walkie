@@ -1,0 +1,8 @@
+services:
+  meshwalkie-relay:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "51820:51820"
+    volumes:
+      - ./data:/data

@@ -15,7 +15,9 @@ import java.util.concurrent.CopyOnWriteArrayList
  * client connections, and is a [Transport]: incoming client packets go to
  * onReceive (the engine), broadcast() length-frames bytes to every client.
  * The engine's flood/dedup does the actual relay + bridge to the BLE mesh.
- * Wire format: [4-byte big-endian length][packet bytes].
+ * Wire format: [4-byte big-endian length][packet bytes]. A length==0 frame
+ * is a keepalive (ignored on read); the server sends one to every client
+ * periodically so idle links survive NAT timeouts and dead ones time out.
  */
 class HostServer(private val port: Int) : Transport {
     private var server: ServerSocket? = null
@@ -35,8 +37,10 @@ class HostServer(private val port: Int) : Transport {
                 ss.bind(InetSocketAddress(port))
                 server = ss
                 L.i(TAG, "hosting on port $port")
+                Thread { pingLoop() }.start()
                 while (running) {
                     val c = ss.accept()
+                    c.soTimeout = 75_000
                     clients.add(c)
                     L.i(TAG, "client connected: ${c.remoteSocketAddress} (${clients.size} total)")
                     Thread { readLoop(c) }.start()
@@ -52,7 +56,8 @@ class HostServer(private val port: Int) : Transport {
             val inp = DataInputStream(BufferedInputStream(c.getInputStream()))
             while (running) {
                 val len = inp.readInt()
-                if (len <= 0 || len > 200_000) break
+                if (len == 0) continue   // keepalive, not a packet
+                if (len < 0 || len > 200_000) break
                 val b = ByteArray(len); inp.readFully(b)
                 handler?.invoke(b)   // engine dedups + re-broadcasts to mesh + other clients
             }
@@ -60,6 +65,23 @@ class HostServer(private val port: Int) : Transport {
         } finally {
             clients.remove(c)
             try { c.close() } catch (_: Exception) {}
+        }
+    }
+
+    /** Zero-length keepalive to every client every 20s (NAT idle-timeout survival). */
+    private fun pingLoop() {
+        while (running) {
+            try { Thread.sleep(20_000) } catch (_: InterruptedException) { break }
+            if (!running) break
+            clients.forEach { c ->
+                try {
+                    val out = DataOutputStream(c.getOutputStream())
+                    synchronized(c) { out.writeInt(0); out.flush() }
+                } catch (_: Exception) {
+                    clients.remove(c)
+                    try { c.close() } catch (_: Exception) {}
+                }
+            }
         }
     }
 

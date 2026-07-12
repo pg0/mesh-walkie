@@ -24,6 +24,8 @@ object Settings {
     private const val KEY_BT_HEADSET = "bt_headset"
     private const val KEY_NET_HOST = "net_host"
     private const val KEY_NET_CLIENT = "net_client"
+    private const val KEY_ONLINE_SERVER = "online_server"
+    private const val KEY_ONLINE_ENABLED = "online_enabled"
     private const val KEY_GPS = "gps_enabled"
     private const val KEY_OFFLINE_SOUND = "offline_sound"
     private const val KEY_VOLUME_PTT = "volume_ptt"
@@ -70,6 +72,14 @@ object Settings {
     /** Internet fallback - join an announced host over the internet. */
     private val _internetClient = MutableStateFlow(false)
     val internetClient: StateFlow<Boolean> = _internetClient
+
+    /** Standalone online relay address ("host[:port]"), empty = unset. */
+    private val _onlineServer = MutableStateFlow("")
+    val onlineServer: StateFlow<String> = _onlineServer
+
+    /** Whether to stay connected to [onlineServer] (independent of the mesh-host join flow). */
+    private val _onlineEnabled = MutableStateFlow(false)
+    val onlineEnabled: StateFlow<Boolean> = _onlineEnabled
 
     /** Share my GPS position on the mesh. Off = privacy, no position broadcast. */
     private val _gpsEnabled = MutableStateFlow(true)
@@ -129,6 +139,8 @@ object Settings {
         _btHeadset.value = prefs.getBoolean(KEY_BT_HEADSET, false)
         _internetHost.value = prefs.getBoolean(KEY_NET_HOST, false)
         _internetClient.value = prefs.getBoolean(KEY_NET_CLIENT, false)
+        _onlineServer.value = prefs.getString(KEY_ONLINE_SERVER, "") ?: ""
+        _onlineEnabled.value = prefs.getBoolean(KEY_ONLINE_ENABLED, false)
         _gpsEnabled.value = prefs.getBoolean(KEY_GPS, true)
         _offlineSound.value = prefs.getBoolean(KEY_OFFLINE_SOUND, false)
         _volumePtt.value = prefs.getBoolean(KEY_VOLUME_PTT, false)
@@ -196,6 +208,19 @@ object Settings {
         _internetClient.value = on
         appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_NET_CLIENT, on).apply()
+    }
+
+    fun setOnlineServer(addr: String) {
+        val clean = addr.trim().take(128)
+        _onlineServer.value = clean
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(KEY_ONLINE_SERVER, clean).apply()
+    }
+
+    fun setOnlineEnabled(on: Boolean) {
+        _onlineEnabled.value = on
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_ONLINE_ENABLED, on).apply()
     }
 
     fun setLiveVoiceOnly(on: Boolean) {

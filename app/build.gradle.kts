@@ -30,8 +30,8 @@ android {
         applicationId = "com.meshwalkie"
         minSdk = 29        // MediaCodec software Opus encoder requires API 29
         targetSdk = 34
-        versionCode = 6
-        versionName = "0.5.1"
+        versionCode = 7
+        versionName = "0.6.0"
     }
 
     buildTypes {
@@ -47,6 +47,12 @@ android {
         // false positive: registerForActivityResult on ComponentActivity is fine
         disable += "InvalidFragmentVersionForActivityResult"
         abortOnError = false
+    }
+
+    testOptions {
+        // JVM unit tests hit android.util.Log via util.L (HostServer/ServerLink
+        // loopback tests); no-op it instead of throwing "not mocked".
+        unitTests.isReturnDefaultValues = true
     }
 
     buildFeatures { compose = true }

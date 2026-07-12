@@ -75,4 +75,33 @@ object NetUtil {
     }
 
     const val DEFAULT_PORT = 51820
+
+    /**
+     * Parse a user-typed "host[:port]" address for the online server field.
+     * Accepts bracketed IPv6 ("[addr]" or "[addr]:port"), bare IPv6 (2+ colons,
+     * no brackets - the whole string is the host, port defaults), "host:port"
+     * (single colon), or a bare host/IPv4 (port defaults). Blank input or an
+     * unclosed bracket returns null. An invalid port falls back to [defaultPort].
+     */
+    fun parseHostPort(input: String, defaultPort: Int = DEFAULT_PORT): Pair<String, Int>? {
+        val s = input.trim()
+        if (s.isEmpty()) return null
+        if (s.startsWith("[")) {
+            val end = s.indexOf(']')
+            if (end < 0) return null
+            val host = s.substring(1, end)
+            val rest = s.substring(end + 1)
+            val port = if (rest.startsWith(":")) rest.substring(1).toIntOrNull() ?: defaultPort else defaultPort
+            return host to port
+        }
+        val colonCount = s.count { it == ':' }
+        if (colonCount >= 2) return s to defaultPort   // bare IPv6, no brackets
+        if (colonCount == 1) {
+            val idx = s.indexOf(':')
+            val host = s.substring(0, idx)
+            val port = s.substring(idx + 1).toIntOrNull() ?: defaultPort
+            return host to port
+        }
+        return s to defaultPort
+    }
 }
