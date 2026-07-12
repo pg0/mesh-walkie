@@ -1,11 +1,14 @@
 package com.meshwalkie.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,6 +22,7 @@ import com.meshwalkie.service.Settings
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -46,11 +50,21 @@ fun PttButton(onPtt: (pressed: Boolean) -> Unit, modifier: Modifier = Modifier) 
         held -> heldColor
         else -> idleColor
     }
+    // Shape/frame is theme structure, not color - reads LocalAppTheme directly
+    // rather than the "theme" var above (which only drives the night-vision color flag).
+    val appTheme = LocalAppTheme.current
+    val knobShape: Shape = if (appTheme == AppTheme.CORRUPTION) RoundedCornerShape(0.dp) else CircleShape
+    val ringModifier = when (appTheme) {
+        AppTheme.FIELD, AppTheme.CORRUPTION ->
+            Modifier.border(2.dp, MaterialTheme.colorScheme.outline, knobShape)
+        AppTheme.RADIO, AppTheme.DARK, AppTheme.NIGHT -> Modifier
+    }
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .size(120.dp)
-            .background(color = color, shape = CircleShape)
+            .background(color = color, shape = knobShape)
+            .then(ringModifier)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {

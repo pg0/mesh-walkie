@@ -12,14 +12,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,7 +84,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Settings", style = MaterialTheme.typography.headlineSmall)
-            Button(onClick = leave) { Text("Back") }
+            AppButton(onClick = leave) { Text("Back") }
         }
 
         Spacer(Modifier.height(24.dp))
@@ -126,7 +123,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 4.dp)
         )
-        TextButton(
+        AppTextButton(
             onClick = { groupField = Settings.DEFAULT_GROUP },
             modifier = Modifier.padding(top = 2.dp)
         ) { Text("Use default channel (${Settings.DEFAULT_GROUP})") }
@@ -149,7 +146,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(20.dp))
 
-        Text("Theme", style = MaterialTheme.typography.labelLarge)
+        SectionHeader("Theme")
         listOf(
             AppTheme.FIELD to "Field (paper)",
             AppTheme.CORRUPTION to "Corruption (brutalist)",
@@ -179,7 +176,9 @@ fun SettingsScreen(onBack: () -> Unit) {
             Switch(checked = gpsOn, onCheckedChange = { Settings.setGpsEnabled(it) })
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(8.dp))
+        AppDivider()
+        Spacer(Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -190,7 +189,9 @@ fun SettingsScreen(onBack: () -> Unit) {
             Switch(checked = offlineSound, onCheckedChange = { Settings.setOfflineSound(it) })
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(8.dp))
+        AppDivider()
+        Spacer(Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -201,7 +202,9 @@ fun SettingsScreen(onBack: () -> Unit) {
             Switch(checked = volumePtt, onCheckedChange = { Settings.setVolumePtt(it) })
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(8.dp))
+        AppDivider()
+        Spacer(Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -212,7 +215,9 @@ fun SettingsScreen(onBack: () -> Unit) {
             Switch(checked = muteSounds, onCheckedChange = { Settings.setMuteSounds(it) })
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(8.dp))
+        AppDivider()
+        Spacer(Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -223,7 +228,9 @@ fun SettingsScreen(onBack: () -> Unit) {
             Switch(checked = textSound, onCheckedChange = { Settings.setTextSound(it) })
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(8.dp))
+        AppDivider()
+        Spacer(Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -238,7 +245,9 @@ fun SettingsScreen(onBack: () -> Unit) {
             style = MaterialTheme.typography.bodySmall
         )
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(8.dp))
+        AppDivider()
+        Spacer(Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -249,7 +258,9 @@ fun SettingsScreen(onBack: () -> Unit) {
             Switch(checked = btHeadsetOn, onCheckedChange = { Settings.setBtHeadset(it) })
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(8.dp))
+        AppDivider()
+        Spacer(Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -262,7 +273,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(20.dp))
 
-        Text("Voice quality (AMR-WB)", style = MaterialTheme.typography.labelLarge)
+        SectionHeader("Voice quality (AMR-WB)")
         Text(
             "Higher = clearer, more data per clip. Lower stretches weak/long links.",
             style = MaterialTheme.typography.bodySmall
@@ -274,16 +285,16 @@ fun SettingsScreen(onBack: () -> Unit) {
             listOf("Sparing\n12.65k" to 12_650, "Medium\n15.85k" to 15_850, "Best\n23.85k" to 23_850)
                 .forEach { (label, rate) ->
                     if (voiceBitrate == rate) {
-                        Button(onClick = { Settings.setVoiceBitrate(rate) }, modifier = Modifier.weight(1f)) { Text(label) }
+                        AppButton(onClick = { Settings.setVoiceBitrate(rate) }, modifier = Modifier.weight(1f)) { Text(label) }
                     } else {
-                        OutlinedButton(onClick = { Settings.setVoiceBitrate(rate) }, modifier = Modifier.weight(1f)) { Text(label) }
+                        AppOutlinedButton(onClick = { Settings.setVoiceBitrate(rate) }, modifier = Modifier.weight(1f)) { Text(label) }
                     }
                 }
         }
 
         Spacer(Modifier.height(20.dp))
 
-        Text("Fallback via WiFi", style = MaterialTheme.typography.labelLarge)
+        SectionHeader("Fallback via WiFi")
         Text(
             "Extends range beyond the BLE mesh over a shared WiFi/hotspot. Host here; others join from the Server menu on the main screen (your IP is shared on the mesh, or enter it manually).",
             style = MaterialTheme.typography.bodySmall
@@ -305,8 +316,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Hosting at $hip : 51820", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                TextButton(onClick = { clipboard.setText(AnnotatedString(hip)) }) { Text("Copy") }
-                TextButton(onClick = {
+                AppTextButton(onClick = { clipboard.setText(AnnotatedString(hip)) }) { Text("Copy") }
+                AppTextButton(onClick = {
                     val send = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
                         putExtra(Intent.EXTRA_TEXT, "Join my Mesh Walkie host - IP: $hip  port: 51820")

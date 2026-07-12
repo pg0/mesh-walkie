@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -66,23 +67,25 @@ class MainActivity : ComponentActivity() {
                 controller.isAppearanceLightStatusBars = themeIsLight(theme)
                 controller.isAppearanceLightNavigationBars = themeIsLight(theme)
             }
-            MaterialTheme(
-                colorScheme = colors,
-                shapes = themeShapes(theme),
-                typography = themeTypography(theme)
-            ) {
-                Surface(color = MaterialTheme.colorScheme.background) {
-                    var showSettings by rememberSaveable { mutableStateOf(false) }
-                    if (showSettings) {
-                        SettingsScreen(onBack = { showSettings = false })
-                    } else {
-                        PeerListScreen(
-                            onOpenSettings = { showSettings = true },
-                            onExit = {
-                                stopService(Intent(this@MainActivity, MeshService::class.java))
-                                finishAndRemoveTask()
-                            }
-                        )
+            CompositionLocalProvider(LocalAppTheme provides theme) {
+                MaterialTheme(
+                    colorScheme = colors,
+                    shapes = themeShapes(theme),
+                    typography = themeTypography(theme)
+                ) {
+                    Surface(color = MaterialTheme.colorScheme.background) {
+                        var showSettings by rememberSaveable { mutableStateOf(false) }
+                        if (showSettings) {
+                            SettingsScreen(onBack = { showSettings = false })
+                        } else {
+                            PeerListScreen(
+                                onOpenSettings = { showSettings = true },
+                                onExit = {
+                                    stopService(Intent(this@MainActivity, MeshService::class.java))
+                                    finishAndRemoveTask()
+                                }
+                            )
+                        }
                     }
                 }
             }

@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -112,7 +111,7 @@ fun MapScreen(
         }
     )
         myLoc?.let { (lat, lon) ->
-            Button(
+            AppButton(
                 onClick = { mapHolder[0]?.controller?.animateTo(GeoPoint(lat, lon)) },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)
             ) { Text("◎ Me") }

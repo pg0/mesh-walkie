@@ -22,7 +22,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -96,7 +95,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             Text("Mesh Walkie", style = MaterialTheme.typography.headlineSmall)
             Box {
                 var menuOpen by remember { mutableStateOf(false) }
-                TextButton(onClick = { menuOpen = true }) { Text("⋮") }
+                AppTextButton(onClick = { menuOpen = true }) { Text("⋮") }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
                         text = { Text("Servers") },
@@ -141,9 +140,9 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             horizontalArrangement = Arrangement.Center
         ) {
-            TextButton(onClick = { viewMode = 0 }) { Text(if (viewMode == 0) "List ●" else "List") }
-            TextButton(onClick = { viewMode = 1 }) { Text(if (viewMode == 1) "Radar ●" else "Radar") }
-            TextButton(onClick = { viewMode = 2 }) { Text(if (viewMode == 2) "Map ●" else "Map") }
+            AppTextButton(onClick = { viewMode = 0 }) { Text(if (viewMode == 0) "List ●" else "List") }
+            AppTextButton(onClick = { viewMode = 1 }) { Text(if (viewMode == 1) "Radar ●" else "Radar") }
+            AppTextButton(onClick = { viewMode = 2 }) { Text(if (viewMode == 2) "Map ●" else "Map") }
         }
 
         when (viewMode) {
@@ -232,7 +231,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("🔊 $lv", style = MaterialTheme.typography.bodyMedium)
-                TextButton(onClick = { MeshBus.replayHandler?.invoke() }) { Text("Replay") }
+                AppTextButton(onClick = { MeshBus.replayHandler?.invoke() }) { Text("Replay") }
             }
         }
         sentStatus?.let { ss ->
@@ -243,9 +242,9 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
             horizontalArrangement = Arrangement.Center
         ) {
             QuickTextWheel(onSend = { MeshBus.sendTextHandler?.invoke(it) })
-            TextButton(onClick = { showType = true }) { Text("Msg") }
-            TextButton(onClick = { showWp = true }) { Text("📍Waypoint") }
-            TextButton(onClick = { showTimer = true }) { Text("⏱ Timer") }
+            AppTextButton(onClick = { showType = true }) { Text("Msg") }
+            AppTextButton(onClick = { showWp = true }) { Text("📍Waypoint") }
+            AppTextButton(onClick = { showTimer = true }) { Text("⏱ Timer") }
         }
         Box(
             modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -379,8 +378,8 @@ fun TargetRow(
             )
             Text("tap the map to move it", style = MaterialTheme.typography.bodySmall)
         }
-        TextButton(onClick = onDrop) { Text("Drop") }
-        TextButton(onClick = onClear) { Text("✕") }
+        AppTextButton(onClick = onDrop) { Text("Drop") }
+        AppTextButton(onClick = onClear) { Text("✕") }
     }
 }
 
@@ -403,7 +402,7 @@ fun WaypointRow(wp: WaypointView, myHeadingDeg: Float, onDelete: () -> Unit) {
             )
             Text("by ${wp.senderName}", style = MaterialTheme.typography.bodyMedium)
         }
-        TextButton(onClick = onDelete) { Text("✕") }
+        AppTextButton(onClick = onDelete) { Text("✕") }
     }
 }
 

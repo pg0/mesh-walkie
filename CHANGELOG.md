@@ -7,6 +7,12 @@
 - ui - MainActivity: MaterialTheme now takes theme-derived colors/shapes/typography; status/nav bar color and icon-contrast (isAppearanceLightStatusBars/NavigationBars) now follow the selected theme via SideEffect instead of a hardcoded black
 - ui - PttButton: derives night flag from theme == AppTheme.NIGHT instead of a separate nightMode flow
 - ui - SettingsScreen: dark-mode/night-mode switches replaced with a "Theme" section (RadioButton per theme)
+- ui - add ThemedControls.kt: LocalAppTheme + AppButton/AppOutlinedButton/AppTextButton/SectionHeader/AppDivider, each rendering per-theme shape/border/padding instead of stock M3 pill controls that ignored MaterialTheme.shapes
+- ui - MainActivity: wraps content in CompositionLocalProvider(LocalAppTheme provides theme) so ThemedControls can read the active theme
+- ui - swap Button/OutlinedButton/TextButton for AppButton/AppOutlinedButton/AppTextButton across SettingsScreen, PeerListScreen, QuickTextWheel, MapScreen, ServerDialog (dialog action slots keep stock TextButton by convention)
+- ui - SettingsScreen: "Theme"/"Voice quality"/"Fallback via WiFi" labels replaced with SectionHeader; AppDivider inserted between the GPS-through-earpiece toggle rows so the list reads as distinct rows
+- ui - PttButton: knob shape/border now theme-aware via LocalAppTheme (FIELD = ring on circle, CORRUPTION = ring on square, RADIO/DARK/NIGHT unchanged), idle/held/maxed color logic untouched
+- build - bump to v0.5.1 (versionCode 6)
 
 ## 2026-06-11
 

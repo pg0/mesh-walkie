@@ -56,7 +56,7 @@ fun ServerDialog(onDismiss: () -> Unit) {
                                     .weight(1f)
                                     .clickable { clipboard.setText(AnnotatedString(h.ip)) }
                             )
-                            TextButton(onClick = {
+                            AppTextButton(onClick = {
                                 MeshBus.joinHandler?.invoke(h.ip, h.port); onDismiss()
                             }) { Text("Join") }
                         }
