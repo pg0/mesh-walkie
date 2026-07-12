@@ -7,9 +7,32 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.meshwalkie.R
 import com.meshwalkie.core.AppTheme
+
+// Bundled pixel/dot-matrix fonts (OFL-licensed, see docs/font-licenses/). Built
+// once at file scope rather than per-call so FIELD/CORRUPTION typography
+// resolution stays cheap.
+@OptIn(ExperimentalTextApi::class)
+private val DotoFamily = FontFamily(
+    Font(
+        R.font.doto_variable,
+        weight = FontWeight.Bold,
+        variationSettings = FontVariation.Settings(FontVariation.weight(700))
+    )
+)
+private val Vt323Family = FontFamily(Font(R.font.vt323_regular))
+// silkscreen_regular.ttf is bundled alongside the bold weight (see
+// docs/font-licenses/) but the CORRUPTION type scale only calls for the
+// bold cut on headers - no unused FontFamily val for it here.
+private val SilkscreenBoldFamily = FontFamily(Font(R.font.silkscreen_bold))
 
 /**
  * Composable-free theme resolution: colors, shapes and type scale per
@@ -29,7 +52,7 @@ fun themeColorScheme(t: AppTheme): ColorScheme = when (t) {
     AppTheme.FIELD -> lightColorScheme(
         background = Color(0xFFEFEDE8),
         surface = Color(0xFFEFEDE8),
-        surfaceVariant = Color(0xFFE2E0DA),
+        surfaceVariant = Color(0xFFDDDAD3),
         onBackground = Color(0xFF1B1B1B),
         onSurface = Color(0xFF1B1B1B),
         onSurfaceVariant = Color(0xFF3C3C3C),
@@ -38,12 +61,12 @@ fun themeColorScheme(t: AppTheme): ColorScheme = when (t) {
         secondary = Color(0xFF4A4A4A),
         onSecondary = Color(0xFFEFEDE8),
         outline = Color(0xFF1B1B1B),
-        error = Color(0xFFC62828)
+        error = Color(0xFFE23B2E)
     )
     // Bitcrusher plugin: same paper family, brutalist, muted color chips.
     AppTheme.CORRUPTION -> lightColorScheme(
-        background = Color(0xFFF1EFE9),
-        surface = Color(0xFFF1EFE9),
+        background = Color(0xFFF5F4F0),
+        surface = Color(0xFFF5F4F0),
         surfaceVariant = Color(0xFFDDDBD3),
         onBackground = Color(0xFF101010),
         onSurface = Color(0xFF101010),
@@ -120,36 +143,61 @@ fun themeShapes(t: AppTheme): Shapes = when (t) {
 }
 
 fun themeTypography(t: AppTheme): Typography = when (t) {
-    // Technical hardware look: monospace on the headline-ish styles only.
+    // Field recorder: dot-matrix Doto on the big display/headline/titleLarge
+    // styles ("TUESDAY", the timer), VT323 pixel-mono on titleMedium/label
+    // styles and bodyMedium/bodySmall (file-list rows, chip labels). VT323's
+    // x-height runs small at equal sp, so those styles get a +2sp bump to
+    // match visual weight. titleSmall/bodyLarge are unused by this scale and
+    // stay default.
     AppTheme.FIELD -> {
         val base = Typography()
         base.copy(
-            titleLarge = base.titleLarge.copy(fontFamily = FontFamily.Monospace),
-            titleMedium = base.titleMedium.copy(fontFamily = FontFamily.Monospace),
-            headlineSmall = base.headlineSmall.copy(fontFamily = FontFamily.Monospace),
-            labelLarge = base.labelLarge.copy(fontFamily = FontFamily.Monospace),
-            labelMedium = base.labelMedium.copy(fontFamily = FontFamily.Monospace)
+            displayLarge = base.displayLarge.copy(fontFamily = DotoFamily, letterSpacing = 1.sp),
+            displayMedium = base.displayMedium.copy(fontFamily = DotoFamily, letterSpacing = 1.sp),
+            displaySmall = base.displaySmall.copy(fontFamily = DotoFamily, letterSpacing = 1.sp),
+            headlineLarge = base.headlineLarge.copy(fontFamily = DotoFamily, letterSpacing = 1.sp),
+            headlineMedium = base.headlineMedium.copy(fontFamily = DotoFamily, letterSpacing = 1.sp),
+            headlineSmall = base.headlineSmall.copy(fontFamily = DotoFamily, letterSpacing = 1.sp),
+            titleLarge = base.titleLarge.copy(fontFamily = DotoFamily, letterSpacing = 1.sp),
+            titleMedium = base.titleMedium.copy(
+                fontFamily = Vt323Family,
+                fontSize = 18.sp,   // M3 default 16sp; VT323 needs +2sp
+                letterSpacing = 1.sp
+            ),
+            bodyMedium = base.bodyMedium.copy(fontFamily = Vt323Family, fontSize = 16.sp),
+            bodySmall = base.bodySmall.copy(fontFamily = Vt323Family, fontSize = 14.sp),
+            labelLarge = base.labelLarge.copy(
+                fontFamily = Vt323Family,
+                fontSize = 16.sp,
+                letterSpacing = 1.sp
+            ),
+            labelMedium = base.labelMedium.copy(fontFamily = Vt323Family, fontSize = 14.sp),
+            labelSmall = base.labelSmall.copy(fontFamily = Vt323Family, fontSize = 13.sp)
         )
     }
-    // Monospace across the whole type scale.
+    // Bitcrusher plugin: VT323 pixel-mono across the whole scale (as
+    // Monospace was), then Silkscreen Bold overrides titleLarge/headline*
+    // and the labelLarge style SectionHeader renders its "TITLE ——" rule
+    // with, for the chunky ALL-CAPS masthead look of the webp. Every
+    // VT323-carrying style gets the same +2sp compensation used in FIELD.
     AppTheme.CORRUPTION -> {
         val base = Typography()
         base.copy(
-            displayLarge = base.displayLarge.copy(fontFamily = FontFamily.Monospace),
-            displayMedium = base.displayMedium.copy(fontFamily = FontFamily.Monospace),
-            displaySmall = base.displaySmall.copy(fontFamily = FontFamily.Monospace),
-            headlineLarge = base.headlineLarge.copy(fontFamily = FontFamily.Monospace),
-            headlineMedium = base.headlineMedium.copy(fontFamily = FontFamily.Monospace),
-            headlineSmall = base.headlineSmall.copy(fontFamily = FontFamily.Monospace),
-            titleLarge = base.titleLarge.copy(fontFamily = FontFamily.Monospace),
-            titleMedium = base.titleMedium.copy(fontFamily = FontFamily.Monospace),
-            titleSmall = base.titleSmall.copy(fontFamily = FontFamily.Monospace),
-            bodyLarge = base.bodyLarge.copy(fontFamily = FontFamily.Monospace),
-            bodyMedium = base.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-            bodySmall = base.bodySmall.copy(fontFamily = FontFamily.Monospace),
-            labelLarge = base.labelLarge.copy(fontFamily = FontFamily.Monospace),
-            labelMedium = base.labelMedium.copy(fontFamily = FontFamily.Monospace),
-            labelSmall = base.labelSmall.copy(fontFamily = FontFamily.Monospace)
+            displayLarge = base.displayLarge.copy(fontFamily = Vt323Family, fontSize = 59.sp),   // M3 defaults +2sp
+            displayMedium = base.displayMedium.copy(fontFamily = Vt323Family, fontSize = 47.sp),
+            displaySmall = base.displaySmall.copy(fontFamily = Vt323Family, fontSize = 38.sp),
+            headlineLarge = base.headlineLarge.copy(fontFamily = SilkscreenBoldFamily, letterSpacing = 2.sp),
+            headlineMedium = base.headlineMedium.copy(fontFamily = SilkscreenBoldFamily, letterSpacing = 2.sp),
+            headlineSmall = base.headlineSmall.copy(fontFamily = SilkscreenBoldFamily, letterSpacing = 2.sp),
+            titleLarge = base.titleLarge.copy(fontFamily = SilkscreenBoldFamily, letterSpacing = 1.sp),
+            titleMedium = base.titleMedium.copy(fontFamily = Vt323Family, fontSize = 18.sp),
+            titleSmall = base.titleSmall.copy(fontFamily = Vt323Family, fontSize = 16.sp),
+            bodyLarge = base.bodyLarge.copy(fontFamily = Vt323Family, fontSize = 18.sp),
+            bodyMedium = base.bodyMedium.copy(fontFamily = Vt323Family, fontSize = 16.sp),
+            bodySmall = base.bodySmall.copy(fontFamily = Vt323Family, fontSize = 14.sp),
+            labelLarge = base.labelLarge.copy(fontFamily = SilkscreenBoldFamily, letterSpacing = 1.sp),
+            labelMedium = base.labelMedium.copy(fontFamily = Vt323Family, fontSize = 14.sp),
+            labelSmall = base.labelSmall.copy(fontFamily = Vt323Family, fontSize = 13.sp)
         )
     }
     // Clean sans, default Material3 type scale.

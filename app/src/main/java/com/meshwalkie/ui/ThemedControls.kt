@@ -45,13 +45,31 @@ fun AppButton(
     content: @Composable RowScope.() -> Unit
 ) {
     when (LocalAppTheme.current) {
+        // Solid ink chip, paper text - the jpg's selected SPATIAL segment. Keeps
+        // primary actions and selected chips distinct from the flat gray blocks
+        // of AppOutlinedButton/AppTextButton.
         AppTheme.FIELD -> Button(
             onClick = onClick, modifier = modifier, enabled = enabled,
-            shape = RoundedCornerShape(6.dp), content = content
+            shape = RoundedCornerShape(3.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
+            elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp),
+            content = content
         )
+        // Inverse black tile (the webp's DYN OFF), hard corners - distinct from
+        // the white-framed boxes of AppOutlinedButton.
         AppTheme.CORRUPTION -> Button(
             onClick = onClick, modifier = modifier, enabled = enabled,
-            shape = RectangleShape, content = content
+            shape = RectangleShape,
+            border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
+            elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp),
+            content = content
         )
         AppTheme.RADIO -> Button(
             onClick = onClick, modifier = modifier, enabled = enabled,
@@ -71,16 +89,26 @@ fun AppOutlinedButton(
     content: @Composable RowScope.() -> Unit
 ) {
     when (LocalAppTheme.current) {
+        // Same flat gray fill as AppButton - no outline in the jpg's control row.
         AppTheme.FIELD -> OutlinedButton(
             onClick = onClick, modifier = modifier, enabled = enabled,
-            shape = RoundedCornerShape(6.dp),
-            border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
+            shape = RoundedCornerShape(3.dp),
+            border = null,
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onBackground
+            ),
             content = content
         )
+        // Same white-fill, thick-black-frame box as AppButton.
         AppTheme.CORRUPTION -> OutlinedButton(
             onClick = onClick, modifier = modifier, enabled = enabled,
             shape = RectangleShape,
             border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.onBackground
+            ),
             content = content
         )
         AppTheme.RADIO -> OutlinedButton(
@@ -104,22 +132,30 @@ fun AppTextButton(
 ) {
     val compactPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
     when (LocalAppTheme.current) {
+        // Same flat gray block as AppButton, compact chip padding.
         AppTheme.FIELD -> OutlinedButton(
             onClick = onClick,
             modifier = modifier.defaultMinSize(minHeight = 32.dp),
-            shape = RoundedCornerShape(6.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            shape = RoundedCornerShape(3.dp),
+            border = null,
             contentPadding = compactPadding,
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onBackground),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onBackground
+            ),
             content = content
         )
+        // White fill, thinner 1.5dp black border, compact chip padding.
         AppTheme.CORRUPTION -> OutlinedButton(
             onClick = onClick,
             modifier = modifier.defaultMinSize(minHeight = 32.dp),
             shape = RectangleShape,
             border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
             contentPadding = compactPadding,
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onBackground),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.onBackground
+            ),
             content = content
         )
         AppTheme.RADIO -> Button(

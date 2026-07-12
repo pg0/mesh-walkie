@@ -89,4 +89,9 @@ length-framed wire protocol as the phone-hosted relay). See
 [`server/README.md`](server/README.md) for the protocol spec, how to run it
 (plain Python or Docker), and deployment notes.
 
+**Fonts** - the FIELD and CORRUPTION themes bundle Doto, VT323, and
+Silkscreen (Google Fonts, SIL Open Font License) under
+`app/src/main/res/font/` for their dot-matrix/pixel type scales. Licenses in
+[`docs/font-licenses/`](docs/font-licenses/).
+
 </details>
