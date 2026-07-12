@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -260,14 +259,14 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("Voice det.", style = MaterialTheme.typography.labelMedium)
-                Switch(checked = liveVoiceOnly, onCheckedChange = { Settings.setLiveVoiceOnly(it) })
+                AppSwitch(checked = liveVoiceOnly, onCheckedChange = { Settings.setLiveVoiceOnly(it) })
             }
             Column(
                 modifier = Modifier.align(Alignment.CenterEnd),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("Live", style = MaterialTheme.typography.labelMedium)
-                Switch(checked = liveOn, onCheckedChange = { MeshBus.liveBroadcastHandler?.invoke(it) })
+                AppSwitch(checked = liveOn, onCheckedChange = { MeshBus.liveBroadcastHandler?.invoke(it) })
             }
         }
 

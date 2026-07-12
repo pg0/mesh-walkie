@@ -1,6 +1,10 @@
 package com.meshwalkie.ui
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -8,20 +12,27 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -209,5 +220,62 @@ fun AppDivider() {
         AppTheme.CORRUPTION -> HorizontalDivider(thickness = 2.dp, color = MaterialTheme.colorScheme.outline)
         AppTheme.RADIO -> HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant)
         AppTheme.DARK, AppTheme.NIGHT -> HorizontalDivider()
+    }
+}
+
+/**
+ * Theme-aware Switch. Stock M3 Switch is a rounded pill that clashes with the
+ * hard-edged paper themes, so FIELD/CORRUPTION draw their own block track and
+ * square-ish thumb (the reference UIs' LIM slider / M-S selector); the other
+ * themes keep the stock control.
+ */
+@Composable
+fun AppSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    when (LocalAppTheme.current) {
+        AppTheme.FIELD -> PaperSwitch(
+            checked, onCheckedChange,
+            shape = RoundedCornerShape(3.dp), borderWidth = 0.dp
+        )
+        AppTheme.CORRUPTION -> PaperSwitch(
+            checked, onCheckedChange,
+            shape = RectangleShape, borderWidth = 2.dp
+        )
+        AppTheme.RADIO, AppTheme.DARK, AppTheme.NIGHT ->
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+/** Block-style switch: on = ink track/paper thumb, off = paper track/ink thumb. */
+@Composable
+private fun PaperSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    shape: Shape,
+    borderWidth: androidx.compose.ui.unit.Dp
+) {
+    val ink = MaterialTheme.colorScheme.primary
+    val paper = if (borderWidth > 0.dp) MaterialTheme.colorScheme.background
+        else MaterialTheme.colorScheme.surfaceVariant
+    val track = if (checked) ink else paper
+    val thumb = if (checked) MaterialTheme.colorScheme.onPrimary else ink
+    val thumbOffset by animateDpAsState(if (checked) 26.dp else 4.dp, label = "thumbOffset")
+    Box(
+        modifier = Modifier
+            .size(width = 52.dp, height = 30.dp)
+            .background(track, shape)
+            .then(
+                if (borderWidth > 0.dp)
+                    Modifier.border(borderWidth, MaterialTheme.colorScheme.outline, shape)
+                else Modifier
+            )
+            .toggleable(value = checked, onValueChange = onCheckedChange, role = Role.Switch)
+    ) {
+        Box(
+            Modifier
+                .align(Alignment.CenterStart)
+                .offset(x = thumbOffset)
+                .size(22.dp)
+                .background(thumb, shape)
+        )
     }
 }

@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -173,7 +172,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Share my GPS position", style = MaterialTheme.typography.labelLarge)
-            Switch(checked = gpsOn, onCheckedChange = { Settings.setGpsEnabled(it) })
+            AppSwitch(checked = gpsOn, onCheckedChange = { Settings.setGpsEnabled(it) })
         }
 
         Spacer(Modifier.height(8.dp))
@@ -186,7 +185,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Sound if a device goes offline", style = MaterialTheme.typography.labelLarge)
-            Switch(checked = offlineSound, onCheckedChange = { Settings.setOfflineSound(it) })
+            AppSwitch(checked = offlineSound, onCheckedChange = { Settings.setOfflineSound(it) })
         }
 
         Spacer(Modifier.height(8.dp))
@@ -199,7 +198,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Volume-down = push to talk", style = MaterialTheme.typography.labelLarge)
-            Switch(checked = volumePtt, onCheckedChange = { Settings.setVolumePtt(it) })
+            AppSwitch(checked = volumePtt, onCheckedChange = { Settings.setVolumePtt(it) })
         }
 
         Spacer(Modifier.height(8.dp))
@@ -212,7 +211,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Mute all sounds", style = MaterialTheme.typography.labelLarge)
-            Switch(checked = muteSounds, onCheckedChange = { Settings.setMuteSounds(it) })
+            AppSwitch(checked = muteSounds, onCheckedChange = { Settings.setMuteSounds(it) })
         }
 
         Spacer(Modifier.height(8.dp))
@@ -225,7 +224,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Text message sound", style = MaterialTheme.typography.labelLarge)
-            Switch(checked = textSound, onCheckedChange = { Settings.setTextSound(it) })
+            AppSwitch(checked = textSound, onCheckedChange = { Settings.setTextSound(it) })
         }
 
         Spacer(Modifier.height(8.dp))
@@ -238,7 +237,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Live: only stream when speaking", style = MaterialTheme.typography.labelLarge)
-            Switch(checked = liveVoiceOnly, onCheckedChange = { Settings.setLiveVoiceOnly(it) })
+            AppSwitch(checked = liveVoiceOnly, onCheckedChange = { Settings.setLiveVoiceOnly(it) })
         }
         Text(
             "Live mode drops silent/room-noise chunks and only sends your voice. Off = continuous stream (e.g. baby monitor).",
@@ -255,7 +254,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Bluetooth headset mic", style = MaterialTheme.typography.labelLarge)
-            Switch(checked = btHeadsetOn, onCheckedChange = { Settings.setBtHeadset(it) })
+            AppSwitch(checked = btHeadsetOn, onCheckedChange = { Settings.setBtHeadset(it) })
         }
 
         Spacer(Modifier.height(8.dp))
@@ -268,7 +267,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Hold to ear -> earpiece (loud places)", style = MaterialTheme.typography.labelLarge)
-            Switch(checked = earpieceProx, onCheckedChange = { Settings.setEarpieceProximity(it) })
+            AppSwitch(checked = earpieceProx, onCheckedChange = { Settings.setEarpieceProximity(it) })
         }
 
         Spacer(Modifier.height(20.dp))
@@ -305,7 +304,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Host (this device is the server)", style = MaterialTheme.typography.bodyMedium)
-            Switch(checked = netHost, onCheckedChange = { Settings.setInternetHost(it) })
+            AppSwitch(checked = netHost, onCheckedChange = { Settings.setInternetHost(it) })
         }
         myHostIp?.let { hip ->
             val clipboard = LocalClipboardManager.current
@@ -335,7 +334,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Client (auto-join a host)", style = MaterialTheme.typography.bodyMedium)
-            Switch(checked = netClient, onCheckedChange = { Settings.setInternetClient(it) })
+            AppSwitch(checked = netClient, onCheckedChange = { Settings.setInternetClient(it) })
         }
 
         Spacer(Modifier.height(28.dp))
