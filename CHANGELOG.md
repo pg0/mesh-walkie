@@ -1,5 +1,6 @@
 ## 2026-07-12
 
+- build - bump to v0.5.0 (versionCode 5)
 - core - add AppTheme enum (FIELD/CORRUPTION/RADIO/DARK/NIGHT), FIELD default
 - ui - add Theme.kt: themeColorScheme/themeShapes/themeTypography/themeIsLight per AppTheme, replacing the two hardcoded dark/night color schemes in MainActivity
 - service - Settings: replace darkMode/nightMode booleans with a single theme StateFlow (setTheme), persisted as the enum name; migrates old dark_mode/night_mode prefs to the nearest theme on first read
