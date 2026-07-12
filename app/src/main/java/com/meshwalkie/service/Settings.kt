@@ -1,18 +1,21 @@
 package com.meshwalkie.service
 
 import android.content.Context
+import com.meshwalkie.core.AppTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * User-editable, persisted settings: display name + dark mode. Backed by the
+ * User-editable, persisted settings: display name + theme. Backed by the
  * same SharedPreferences file as [DeviceId]. Call [init] once (from the
  * Activity and the Service) before reading the flows.
  */
 object Settings {
     private const val PREFS = "meshwalkie"
     private const val KEY_NAME = "display_name"
+    // Old booleans, kept only to migrate existing installs into KEY_THEME.
     private const val KEY_DARK = "dark_mode"
+    private const val KEY_THEME = "app_theme"
     private const val KEY_GROUP = "group_code"
     const val DEFAULT_GROUP = "channel-1"
     private const val KEY_QUICKTEXTS = "quick_texts"
@@ -36,9 +39,9 @@ object Settings {
     private val _displayName = MutableStateFlow("")
     val displayName: StateFlow<String> = _displayName
 
-    // Default ON: this is an OLED-friendly app, dark by default.
-    private val _darkMode = MutableStateFlow(true)
-    val darkMode: StateFlow<Boolean> = _darkMode
+    /** Selected UI theme. Default FIELD (paper field-recorder look). */
+    private val _theme = MutableStateFlow(AppTheme.FIELD)
+    val theme: StateFlow<AppTheme> = _theme
 
     /**
      * Mesh group code. Phones connect only to others with the same code
@@ -84,10 +87,6 @@ object Settings {
     private val _muteSounds = MutableStateFlow(false)
     val muteSounds: StateFlow<Boolean> = _muteSounds
 
-    /** Night mode: red-tinted UI to preserve night vision. */
-    private val _nightMode = MutableStateFlow(false)
-    val nightMode: StateFlow<Boolean> = _nightMode
-
     /** Beep when a quick-text arrives. */
     private val _textSound = MutableStateFlow(true)
     val textSound: StateFlow<Boolean> = _textSound
@@ -111,7 +110,17 @@ object Settings {
         val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         deviceId = DeviceId.get(appContext)
         _displayName.value = prefs.getString(KEY_NAME, null) ?: DeviceId.displayName(appContext)
-        _darkMode.value = prefs.getBoolean(KEY_DARK, true)
+        _theme.value = if (prefs.contains(KEY_THEME)) {
+            val saved = prefs.getString(KEY_THEME, null)
+            AppTheme.entries.find { it.name == saved } ?: AppTheme.FIELD
+        } else {
+            // Migrate pre-theme installs: old night/dark booleans -> nearest theme.
+            when {
+                prefs.getBoolean(KEY_NIGHT, false) -> AppTheme.NIGHT
+                prefs.contains(KEY_DARK) && prefs.getBoolean(KEY_DARK, false) -> AppTheme.DARK
+                else -> AppTheme.FIELD
+            }
+        }
         _groupCode.value = prefs.getString(KEY_GROUP, DEFAULT_GROUP) ?: DEFAULT_GROUP
         val saved = prefs.getString(KEY_QUICKTEXTS, null)
         _quickTexts.value = saved?.split("\n")?.map { it.trim() }?.filter { it.isNotEmpty() }
@@ -124,7 +133,6 @@ object Settings {
         _offlineSound.value = prefs.getBoolean(KEY_OFFLINE_SOUND, false)
         _volumePtt.value = prefs.getBoolean(KEY_VOLUME_PTT, false)
         _muteSounds.value = prefs.getBoolean(KEY_MUTE, false)
-        _nightMode.value = prefs.getBoolean(KEY_NIGHT, false)
         _textSound.value = prefs.getBoolean(KEY_TEXT_SOUND, true)
         _voiceBitrate.value = prefs.getInt(KEY_VOICE_BITRATE, DEFAULT_VOICE_BITRATE)
         _earpieceProximity.value = prefs.getBoolean(KEY_EARPIECE_PROX, true)
@@ -158,12 +166,6 @@ object Settings {
         _muteSounds.value = on
         appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_MUTE, on).apply()
-    }
-
-    fun setNightMode(on: Boolean) {
-        _nightMode.value = on
-        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putBoolean(KEY_NIGHT, on).apply()
     }
 
     fun setGpsEnabled(on: Boolean) {
@@ -234,9 +236,9 @@ object Settings {
             .edit().putString(KEY_NAME, clean).apply()
     }
 
-    fun setDarkMode(on: Boolean) {
-        _darkMode.value = on
+    fun setTheme(t: AppTheme) {
+        _theme.value = t
         appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putBoolean(KEY_DARK, on).apply()
+            .edit().putString(KEY_THEME, t.name).apply()
     }
 }

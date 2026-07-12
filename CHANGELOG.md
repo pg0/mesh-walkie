@@ -1,3 +1,12 @@
+## 2026-07-12
+
+- core - add AppTheme enum (FIELD/CORRUPTION/RADIO/DARK/NIGHT), FIELD default
+- ui - add Theme.kt: themeColorScheme/themeShapes/themeTypography/themeIsLight per AppTheme, replacing the two hardcoded dark/night color schemes in MainActivity
+- service - Settings: replace darkMode/nightMode booleans with a single theme StateFlow (setTheme), persisted as the enum name; migrates old dark_mode/night_mode prefs to the nearest theme on first read
+- ui - MainActivity: MaterialTheme now takes theme-derived colors/shapes/typography; status/nav bar color and icon-contrast (isAppearanceLightStatusBars/NavigationBars) now follow the selected theme via SideEffect instead of a hardcoded black
+- ui - PttButton: derives night flag from theme == AppTheme.NIGHT instead of a separate nightMode flow
+- ui - SettingsScreen: dark-mode/night-mode switches replaced with a "Theme" section (RadioButton per theme)
+
 ## 2026-06-11
 
 - service — add MeshBus: process-wide StateFlow bridge (peers, myHeading, pttHandler) written by service, consumed by Compose

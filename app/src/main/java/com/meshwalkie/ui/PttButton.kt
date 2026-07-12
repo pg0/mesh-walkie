@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meshwalkie.core.AppTheme
 import com.meshwalkie.service.MeshBus
 import com.meshwalkie.service.Settings
 import androidx.compose.ui.Alignment
@@ -29,7 +30,8 @@ fun PttButton(onPtt: (pressed: Boolean) -> Unit, modifier: Modifier = Modifier) 
     // armed = the recorder actually started during this hold; guards against an
     // amber flash in the brief gap between press and the async recording=true.
     var armed by remember { mutableStateOf(false) }
-    val night by Settings.nightMode.collectAsStateWithLifecycle()
+    val theme by Settings.theme.collectAsStateWithLifecycle()
+    val night = theme == AppTheme.NIGHT
     val recording by MeshBus.recording.collectAsStateWithLifecycle()
     LaunchedEffect(held, recording) {
         if (held && recording) armed = true

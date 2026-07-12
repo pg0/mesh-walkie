@@ -1,6 +1,7 @@
 package com.meshwalkie.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,13 +34,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meshwalkie.core.AppTheme
 import com.meshwalkie.service.MeshBus
 import com.meshwalkie.service.Settings
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
 
-    val dark by Settings.darkMode.collectAsStateWithLifecycle()
+    val theme by Settings.theme.collectAsStateWithLifecycle()
     val liveVoiceOnly by Settings.liveVoiceOnly.collectAsStateWithLifecycle()
     val btHeadsetOn by Settings.btHeadset.collectAsStateWithLifecycle()
     val netHost by Settings.internetHost.collectAsStateWithLifecycle()
@@ -47,7 +50,6 @@ fun SettingsScreen(onBack: () -> Unit) {
     val offlineSound by Settings.offlineSound.collectAsStateWithLifecycle()
     val volumePtt by Settings.volumePtt.collectAsStateWithLifecycle()
     val muteSounds by Settings.muteSounds.collectAsStateWithLifecycle()
-    val nightMode by Settings.nightMode.collectAsStateWithLifecycle()
     val textSound by Settings.textSound.collectAsStateWithLifecycle()
     val voiceBitrate by Settings.voiceBitrate.collectAsStateWithLifecycle()
     val earpieceProx by Settings.earpieceProximity.collectAsStateWithLifecycle()
@@ -147,13 +149,23 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(20.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("Dark mode (OLED)", style = MaterialTheme.typography.labelLarge)
-            Switch(checked = dark, onCheckedChange = { Settings.setDarkMode(it) })
+        Text("Theme", style = MaterialTheme.typography.labelLarge)
+        listOf(
+            AppTheme.FIELD to "Field (paper)",
+            AppTheme.CORRUPTION to "Corruption (brutalist)",
+            AppTheme.RADIO to "Radio (white/red)",
+            AppTheme.DARK to "Dark (OLED)",
+            AppTheme.NIGHT to "Night (red, night vision)"
+        ).forEach { (t, label) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { Settings.setTheme(t) },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(selected = theme == t, onClick = { Settings.setTheme(t) })
+                Text(label, style = MaterialTheme.typography.bodyMedium)
+            }
         }
 
         Spacer(Modifier.height(20.dp))
@@ -209,17 +221,6 @@ fun SettingsScreen(onBack: () -> Unit) {
         ) {
             Text("Text message sound", style = MaterialTheme.typography.labelLarge)
             Switch(checked = textSound, onCheckedChange = { Settings.setTextSound(it) })
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("Night mode (red, night vision)", style = MaterialTheme.typography.labelLarge)
-            Switch(checked = nightMode, onCheckedChange = { Settings.setNightMode(it) })
         }
 
         Spacer(Modifier.height(20.dp))

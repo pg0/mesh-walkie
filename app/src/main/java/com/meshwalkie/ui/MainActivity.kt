@@ -11,13 +11,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshwalkie.service.MeshService
 import com.meshwalkie.service.Settings
@@ -55,24 +55,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Settings.init(this)
-        // Black system bars (was a light theme showing a white status bar).
-        window.statusBarColor = android.graphics.Color.BLACK
-        window.navigationBarColor = android.graphics.Color.BLACK
         setContent {
-            val dark by Settings.darkMode.collectAsStateWithLifecycle()
-            val night by Settings.nightMode.collectAsStateWithLifecycle()
-            val red = Color(0xFFD0342C)
-            val colors = when {
-                night -> darkColorScheme(
-                    background = Color.Black, surface = Color.Black,
-                    onBackground = red, onSurface = red,
-                    primary = red, onPrimary = Color.Black,
-                    surfaceVariant = Color(0xFF2A0000), onSurfaceVariant = red
-                )
-                dark -> darkColorScheme(background = Color.Black, surface = Color.Black)
-                else -> lightColorScheme()
+            val theme by Settings.theme.collectAsStateWithLifecycle()
+            val colors = themeColorScheme(theme)
+            // System bars follow the selected theme (background color + icon contrast).
+            SideEffect {
+                window.statusBarColor = colors.background.toArgb()
+                window.navigationBarColor = colors.background.toArgb()
+                val controller = WindowCompat.getInsetsController(window, window.decorView)
+                controller.isAppearanceLightStatusBars = themeIsLight(theme)
+                controller.isAppearanceLightNavigationBars = themeIsLight(theme)
             }
-            MaterialTheme(colorScheme = colors) {
+            MaterialTheme(
+                colorScheme = colors,
+                shapes = themeShapes(theme),
+                typography = themeTypography(theme)
+            ) {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     var showSettings by rememberSaveable { mutableStateOf(false) }
                     if (showSettings) {
