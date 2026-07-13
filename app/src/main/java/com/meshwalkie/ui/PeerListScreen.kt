@@ -115,7 +115,7 @@ fun PeerListScreen(onOpenSettings: () -> Unit, onExit: () -> Unit) {
         Text(status, style = MaterialTheme.typography.bodyMedium)
         when {
             myHostIp != null -> Text("🌐 Hosting - $hostClients client(s)", style = MaterialTheme.typography.bodySmall)
-            joinedServer -> Text("🌐 Joined online host", style = MaterialTheme.typography.bodySmall)
+            joinedServer -> Text("🌐 Internet backup active", style = MaterialTheme.typography.bodySmall)
         }
         if (muted) Text("🔇 Muted", style = MaterialTheme.typography.bodySmall)
         countdown?.let { (label, endAt) ->

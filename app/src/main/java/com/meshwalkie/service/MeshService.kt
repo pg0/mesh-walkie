@@ -7,6 +7,9 @@ import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkRequest
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -76,6 +79,9 @@ class MeshService : Service() {
     private val liveBroadcasting = AtomicBoolean(false)
     private var sensorManager: SensorManager? = null
     private var proximitySensor: Sensor? = null
+    private var connectivityManager: ConnectivityManager? = null
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private val rediscoverPending = java.util.concurrent.atomic.AtomicBoolean(false)
     private val proximityListener = object : SensorEventListener {
         override fun onSensorChanged(e: SensorEvent) {
             val max = proximitySensor?.maximumRange ?: 5f
@@ -188,6 +194,20 @@ class MeshService : Service() {
         // When the toggle is switched off, drop any earpiece routing immediately.
         scope.launch {
             Settings.earpieceProximity.collect { on -> if (!on) routeEarpiece(false) }
+        }
+
+        // Watch connectivity changes: when a network appears/disappears (e.g. WiFi
+        // pulled), Nearby's WiFi mediums die and it waits on slow internal timers
+        // before re-meshing over BLE. Re-kick discovery immediately so the BT
+        // fallback comes up in seconds, not after a long wait.
+        connectivityManager = (getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager).also { cm ->
+            val cb = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) = kickRediscover()
+                override fun onLost(network: Network) = kickRediscover()
+            }
+            networkCallback = cb
+            try { cm.registerNetworkCallback(NetworkRequest.Builder().build(), cb) }
+            catch (e: Exception) { L.w(TAG, "registerNetworkCallback: $e") }
         }
 
         // Mute-all also silences received voice playback.
@@ -655,11 +675,32 @@ class MeshService : Service() {
         publishPeers()
     }
 
+    /**
+     * A network transition happened. Debounce (~2.5s, coalescing the burst of
+     * onLost/onAvailable a WiFi toggle fires) then re-kick Nearby advertising +
+     * discovery so a BLE fallback re-establishes fast. Does not drop live BT
+     * links; harmless when the mesh is already up.
+     */
+    private fun kickRediscover() {
+        if (!rediscoverPending.compareAndSet(false, true)) return
+        scope.launch {
+            delay(2_500)
+            rediscoverPending.set(false)
+            if (::transport.isInitialized) {
+                L.i(TAG, "network change -> re-kicking Nearby discovery")
+                transport.rediscover()
+            }
+        }
+    }
+
+    // BT mesh is the primary path; the internet relay is a quiet backup. The
+    // headline reflects BLE connectivity and only falls back to the internet
+    // line when there is no BLE peer at all.
     private fun statusText(links: Int): String = when {
-        links == 0 && serverConnected -> "Online via server"
-        links == 0 -> "Searching for devices…"
         links == 1 -> "1 device connected"
-        else -> "$links devices connected"
+        links > 1 -> "$links devices connected"
+        serverConnected -> "No device nearby - via internet backup"
+        else -> "Searching for devices…"
     }
 
     private fun buildNotification(): Notification {
@@ -694,6 +735,7 @@ class MeshService : Service() {
         applyHeadsetRouting(false)
         routeEarpiece(false)
         sensorManager?.unregisterListener(proximityListener)
+        networkCallback?.let { cb -> try { connectivityManager?.unregisterNetworkCallback(cb) } catch (_: Exception) {} }
         locationSource.stop()
         headingSource.stop()
         transport.stop()

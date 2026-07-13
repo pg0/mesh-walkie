@@ -107,6 +107,20 @@ class NearbyTransport(
         ).addOnFailureListener { e -> L.e(TAG, "startDiscovery: $e") }
     }
 
+    /**
+     * Restart advertising + discovery without tearing down existing endpoints.
+     * Nearby relies on slow internal retry timers to re-mesh after conditions
+     * change (e.g. WiFi dropped, so its WiFi mediums died and it must fall back
+     * to BLE). Calling this on a network change re-kicks discovery immediately,
+     * so a BT fallback comes up in seconds instead of after a long wait. Safe
+     * while connected - it does not drop live links (no stopAllEndpoints).
+     */
+    fun rediscover() {
+        try { client.stopDiscovery() } catch (_: Exception) {}
+        try { client.stopAdvertising() } catch (_: Exception) {}
+        start()
+    }
+
     fun stop() {
         client.stopAdvertising()
         client.stopDiscovery()

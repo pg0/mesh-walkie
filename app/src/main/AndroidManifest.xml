@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <!-- Watch connectivity changes to re-kick the BLE mesh fast when a network drops -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Map tiles (OpenStreetMap via osmdroid); cacheable for offline use -->
     <uses-permission android:name="android.permission.INTERNET" />

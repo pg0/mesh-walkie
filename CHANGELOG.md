@@ -1,5 +1,9 @@
 ## 2026-07-13
 
+- service — BT mesh is now the primary path, internet relay an explicit quiet backup: status headline reflects BLE links and only falls back to an "internet backup" line when no device is nearby; main-screen indicator reworded to "Internet backup active". Both transports stay always-on (required for BT<->internet bridging).
+- nearby/service — fast BLE re-establish on network change: a ConnectivityManager callback re-kicks Nearby advertising+discovery (NearbyTransport.rediscover, debounced 2.5s) when a network appears/drops, so a BT fallback comes up in seconds instead of waiting on Nearby's slow internal retry (measured ~4s to reconnect after a WiFi toggle). Adds ACCESS_NETWORK_STATE.
+- build — bump to v0.7.2 (versionCode 10)
+
 - net — online server speaks WebSocket alongside raw TCP; app accepts wss://host[/path] (TLS + hostname verify) so the relay can sit behind a Cloudflare Tunnel with no port forwarding (WsWire.kt, ServerLink dual-mode, NetUtil.parseServerAddr, relay.py auto-detects GET/raw on one port)
 - core — CompositeTransport implements RoutedTransport: each child tagged Route.MESH/SERVER, tag flows through MeshEngine onSeen (pre-dedup) to TransportRouter (tracks both links, mesh preferred while fresh)
 - ui — per-peer link badge 📶 BLE (with hop count) vs 🌐 via internet in roster + arrow rows; fixes internet peers falsely showing "direct (near)" since the relay leaves TTL untouched
