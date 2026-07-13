@@ -107,6 +107,43 @@ The bottom of Settings shows your read-only **Device ID** and the installed **ve
 
 </details>
 
+## Online relay (optional)
+
+<details>
+<summary><b>How the relay works, and how to run your own</b></summary>
+
+<br>
+
+Phones too far apart for the Bluetooth/WiFi mesh - different cities, no chain of phones between them - can bridge through a shared **internet relay**.
+
+**How it works.** The relay is a blind forwarder. Every packet is already AES-256-GCM encrypted on the phone with your channel key, so the relay only ever sees ciphertext - it stores nothing, has no accounts, and just fans each packet out to every *other* phone connected to it. Whoever runs the box cannot read your voice, text, or position. It's one small Python file (standard library only, no dependencies), dual-protocol on a single port: **raw TCP** for direct/LAN/VPS use, and **WebSocket** so it can sit behind an HTTP-only tunnel. A phone connected to both the mesh and the relay bridges the two for free.
+
+**Run it**
+
+```bash
+# plain Python 3 - no packages to install
+python server/relay.py
+
+# or Docker
+cd server && docker compose up -d
+```
+
+Env vars: `PORT` (default `51820`), `MAX_CLIENTS` (default `64`).
+
+**Make it reachable** - pick what fits your network:
+
+| Situation | How |
+|---|---|
+| VPS / box with a public IP | Open the port, point the app at `your-host:51820` (raw TCP). |
+| Home server behind a router | Forward the port to the box, then as above. |
+| No public IP / CGNAT / firewall | Run a tunnel that dials outbound - nothing to forward. `cloudflared tunnel --url http://localhost:51820` prints a throwaway `https://xyz.trycloudflare.com`; use `wss://xyz.trycloudflare.com` in the app. For a permanent hostname use a named Cloudflare Tunnel or Tailscale Funnel. |
+
+**Point the app at it.** On each phone: **⋮ menu → Servers → Online server**, enter the address - `host:port` for a raw relay, `wss://host` for one behind a tunnel - and tap **Connect**. It reconnects on its own (backoff up to 30s) if the link drops.
+
+Full wire protocol, the `200 ok` health check, Docker + tunnel deployment notes, and an in-process self-test (`python server/test_relay.py`) are in [`server/README.md`](server/README.md).
+
+</details>
+
 ## Get it
 
 <div align="center">
