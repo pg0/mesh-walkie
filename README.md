@@ -73,6 +73,40 @@
 Only phones with your channel name can hear you. Voice is encrypted
 (AES-256-GCM). No accounts, no servers, nothing leaves the group.
 
+## Settings
+
+<details>
+<summary><b>Every setting, explained</b></summary>
+
+<br>
+
+Open the **⋮ menu → Settings**. Changes save as you go (text fields save when you tap away or press Back).
+
+| Setting | What it does |
+|---|---|
+| **Name** | Your display name, shown to everyone else in the group. |
+| **Channel** | The group's shared secret word. Only phones on the same channel hear each other - pick a private one like `team-alpha`. Defaults to `channel-1`; a one-tap button resets to it. |
+| **Quick texts** | Your one-tap message presets (up to 8, one per line), shown on the wheel next to the talk button. |
+| **Theme** | Five looks: **Field** (paper, default), **Corruption** (brutalist), **Radio** (white/red), **Dark** (OLED black), **Night** (red, night-vision friendly). |
+| **Share my GPS position** | Broadcast your location so friends get your arrow, distance, and map pin. Off = privacy, and the GPS chip is powered down (saves battery). |
+| **Sound if a device goes offline** | Play an alert tone when someone drops off the mesh. |
+| **Volume-down = push to talk** | Hold the volume-down button as PTT - eyes-free, glove-friendly. |
+| **Mute all sounds** | Silence every alert beep *and* incoming voice playback. |
+| **Text message sound** | Beep when a quick text or message arrives. |
+| **Live: only stream when speaking** | In Live mode, drop silent/room-noise chunks and send only your voice. Off = continuous stream (e.g. baby monitor). Mirrors the **Voice det.** switch on the main screen. |
+| **Bluetooth headset mic** | Capture your voice through a connected Bluetooth (SCO) headset instead of the phone mic. |
+| **Hold to ear → earpiece** | Proximity sensor routes incoming voice to the earpiece when you raise the phone to your ear - for loud places. |
+| **Auto level mic (AGC + limiter)** | Evens out quiet/loud and near/far speakers without clipping. Applied at your mic, so everyone hears you at a steady level. On by default. |
+| **Voice quality (AMR-WB)** | Bitrate per clip: **Sparing** (12.65k), **Medium** (15.85k), **Best** (23.85k). Higher = clearer but more data; lower stretches weak or long links. |
+| **Fallback via WiFi → Host** | Make this phone the LAN relay server (shares its IP on the mesh) so others extend range over a shared WiFi/hotspot. |
+| **Fallback via WiFi → Client** | Auto-join a host announced on the mesh. |
+
+**Online relay** (⋮ menu → **Servers**, separate from Settings): enter an internet relay address to bridge phones that aren't on the same mesh - `host:port` for a direct/LAN/VPS relay, or `wss://your-host` for one behind a Cloudflare Tunnel or similar. It reconnects on its own if the link drops. See [`server/README.md`](server/README.md).
+
+The bottom of Settings shows your read-only **Device ID** and the installed **version**.
+
+</details>
+
 ## Get it
 
 <div align="center">
