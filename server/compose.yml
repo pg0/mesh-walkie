@@ -6,3 +6,16 @@ services:
       - "51820:51820"
     volumes:
       - ./data:/data
+
+  # Optional: Cloudflare Tunnel sidecar for wss:// access with no port
+  # forwarding (see README.md "Behind a firewall: Cloudflare Tunnel").
+  # Create a named tunnel, point its public hostname at
+  # http://meshwalkie-relay:51820, then set CF_TUNNEL_TOKEN in .env
+  # (never hardcode it) and uncomment below.
+  #
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   restart: unless-stopped
+  #   command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+  #   depends_on:
+  #     - meshwalkie-relay

@@ -4,10 +4,12 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.DataOutputStream
 import java.net.ServerSocket
 import java.net.Socket
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
@@ -30,16 +32,33 @@ class RelayLoopbackTest {
         Thread.sleep(300)   // let the accept loop bind
 
         val received = LinkedBlockingQueue<ByteArray>()
-        val a = ServerLink("127.0.0.1", port)
-        val b = ServerLink("127.0.0.1", port)
+        // autoReconnect: a transient localhost connect failure (Windows dev
+        // boxes: Hyper-V excluded ephemeral-port ranges throw BindException)
+        // retries instead of silently failing the test.
+        val a = ServerLink("127.0.0.1", port, autoReconnect = true)
+        val b = ServerLink("127.0.0.1", port, autoReconnect = true)
         b.onReceive { received.add(it) }
+        val aUp = CountDownLatch(1)
+        val bUp = CountDownLatch(1)
+        a.onState = { if (it) aUp.countDown() }
+        b.onState = { if (it) bUp.countDown() }
         a.connect()
         b.connect()
-        Thread.sleep(500)   // let both clients connect
+        assertTrue("client A never connected", aUp.await(15, TimeUnit.SECONDS))
+        assertTrue("client B never connected", bUp.await(15, TimeUnit.SECONDS))
 
         // A raw keepalive frame (4 zero bytes) must not be relayed as a packet.
-        Socket("127.0.0.1", port).use { raw ->
-            DataOutputStream(raw.getOutputStream()).apply { writeInt(0); flush() }
+        // Retry the plain socket too - same transient BindException risk.
+        val raw = run {
+            var s: Socket? = null
+            for (attempt in 1..5) {
+                try { s = Socket("127.0.0.1", port); break } catch (_: Exception) { Thread.sleep(200) }
+            }
+            s
+        }
+        assertNotNull("raw keepalive socket never connected", raw)
+        raw!!.use {
+            DataOutputStream(it.getOutputStream()).apply { writeInt(0); flush() }
             Thread.sleep(300)
         }
         assertNull(received.poll(300, TimeUnit.MILLISECONDS))

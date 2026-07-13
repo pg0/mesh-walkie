@@ -50,7 +50,7 @@ fun ServerDialog(onDismiss: () -> Unit) {
                 Text("Online server")
                 OutlinedTextField(
                     value = onlineField, onValueChange = { onlineField = it },
-                    label = { Text("server address (host[:port])") }, singleLine = true,
+                    label = { Text("server address (host[:port] or wss://…)") }, singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Row(

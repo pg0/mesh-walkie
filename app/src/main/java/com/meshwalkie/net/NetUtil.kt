@@ -104,4 +104,75 @@ object NetUtil {
         }
         return s to defaultPort
     }
+
+    /** Which wire the online-server field resolves to. */
+    enum class ServerKind { RAW, WS }
+
+    /**
+     * A parsed online-server address: [kind] RAW is the raw length-framed
+     * TCP wire (LAN/VPS, [parseHostPort]'s domain); WS is a WebSocket client
+     * connection, [tls] true for wss:// (behind e.g. a Cloudflare Tunnel).
+     */
+    data class ServerAddr(
+        val kind: ServerKind,
+        val host: String,
+        val port: Int,
+        val path: String = "/",
+        val tls: Boolean = false
+    )
+
+    /**
+     * Parse the online-server settings field. `wss://host[:port][/path]`
+     * (TLS, default port 443) and `ws://host[:port][/path]` (plaintext,
+     * default port 80 - for LAN testing of the WS path) both parse to a WS
+     * [ServerAddr] with bracketed-IPv6 host support. Anything else falls
+     * back to [parseHostPort] (raw TCP, default port [DEFAULT_PORT]). Blank
+     * input, or an unclosed bracket in either form, returns null.
+     */
+    fun parseServerAddr(input: String): ServerAddr? {
+        val s = input.trim()
+        if (s.isEmpty()) return null
+
+        val tls: Boolean
+        val afterScheme: String
+        when {
+            s.startsWith("wss://", ignoreCase = true) -> { tls = true; afterScheme = s.substring(6) }
+            s.startsWith("ws://", ignoreCase = true) -> { tls = false; afterScheme = s.substring(5) }
+            else -> return parseHostPort(s, DEFAULT_PORT)?.let { ServerAddr(ServerKind.RAW, it.first, it.second) }
+        }
+        val defaultPort = if (tls) 443 else 80
+
+        val host: String
+        val remainder: String   // what follows the host: "", ":port", "/path", or ":port/path"
+        if (afterScheme.startsWith("[")) {
+            val end = afterScheme.indexOf(']')
+            if (end < 0) return null
+            host = afterScheme.substring(1, end)
+            remainder = afterScheme.substring(end + 1)
+        } else {
+            val slash = afterScheme.indexOf('/')
+            val authority = if (slash >= 0) afterScheme.substring(0, slash) else afterScheme
+            val pathPart = if (slash >= 0) afterScheme.substring(slash) else ""
+            val colon = authority.indexOf(':')
+            if (colon >= 0) {
+                host = authority.substring(0, colon)
+                remainder = ":" + authority.substring(colon + 1) + pathPart
+            } else {
+                host = authority
+                remainder = pathPart
+            }
+        }
+        if (host.isEmpty()) return null
+
+        var port = defaultPort
+        var pathRemainder = remainder
+        if (pathRemainder.startsWith(":")) {
+            val slash = pathRemainder.indexOf('/')
+            val portStr = if (slash >= 0) pathRemainder.substring(1, slash) else pathRemainder.substring(1)
+            port = portStr.toIntOrNull() ?: defaultPort
+            pathRemainder = if (slash >= 0) pathRemainder.substring(slash) else ""
+        }
+        val path = if (pathRemainder.isEmpty()) "/" else pathRemainder
+        return ServerAddr(ServerKind.WS, host, port, path, tls)
+    }
 }

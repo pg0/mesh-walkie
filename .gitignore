@@ -11,3 +11,4 @@ keystore.properties
 local.properties
 .idea/
 .claude/settings.local.json
+__pycache__/

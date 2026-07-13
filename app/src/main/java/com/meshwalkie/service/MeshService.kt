@@ -219,13 +219,13 @@ class MeshService : Service() {
                         disconnectClient()
                         return@collect
                     }
-                    val parsed = NetUtil.parseHostPort(addr)
+                    val parsed = NetUtil.parseServerAddr(addr)
                     if (parsed == null) {
                         disconnectClient()
                         MeshBus.publishStatus("No online server address set")
                         return@collect
                     }
-                    connectOnline(parsed.first, parsed.second)
+                    connectOnline(parsed)
                 }
         }
 
@@ -598,13 +598,15 @@ class MeshService : Service() {
     }
 
     /**
-     * Connect (or reconnect) to the standalone online server at [host]:[port].
+     * Connect (or reconnect) to the standalone online server at [addr] - raw
+     * TCP for a LAN/VPS relay, or a WebSocket client (optionally TLS) for a
+     * relay fronted by something HTTP/WS-only like a Cloudflare Tunnel.
      * Unlike [joinHost], the link auto-reconnects on its own and a drop does
      * NOT free the slot - it just flips to "Reconnecting…" and keeps retrying.
      */
-    private fun connectOnline(host: String, port: Int) {
+    private fun connectOnline(addr: NetUtil.ServerAddr) {
         disconnectClient()
-        val link = ServerLink(host, port, autoReconnect = true)
+        val link = ServerLink.forAddr(addr, autoReconnect = true)
         link.onState = { c ->
             serverConnected = c
             if (c) everConnected = true
