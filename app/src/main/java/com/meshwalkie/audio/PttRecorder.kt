@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import com.meshwalkie.core.PeakLimiter
 
 /**
  * Captures PCM16 mono 16 kHz from the mic while PTT is held.
@@ -15,12 +16,17 @@ class PttRecorder {
         const val TAIL_MS = 300   // extra capture after release to keep the word's tail
     }
 
-    /** Caller (MeshService) holds RECORD_AUDIO before calling. */
+    /**
+     * Caller (MeshService) holds RECORD_AUDIO before calling. With [agc] the
+     * device auto-gain is attached to the capture session and a peak limiter
+     * runs on the result so the clip is level and un-clipped.
+     */
     @SuppressLint("MissingPermission")
     fun record(
         isHeld: () -> Boolean,
         maxMs: Int = 30_000,
-        audioSource: Int = MediaRecorder.AudioSource.MIC
+        audioSource: Int = MediaRecorder.AudioSource.MIC,
+        agc: Boolean = false
     ): ShortArray {
         val minBuf = AudioRecord.getMinBufferSize(
             OpusCodec.SAMPLE_RATE,
@@ -34,6 +40,8 @@ class PttRecorder {
             AudioFormat.ENCODING_PCM_16BIT,
             maxOf(minBuf, OpusCodec.FRAME_SAMPLES * 2 * 4)
         )
+        val gainControl = CaptureAgc.attach(recorder, agc)
+        val limiter = if (agc) PeakLimiter() else null
         val maxSamples = OpusCodec.SAMPLE_RATE * maxMs / 1000
         val pcm = ArrayList<Short>(maxSamples)
         val chunk = ShortArray(OpusCodec.FRAME_SAMPLES)
@@ -56,7 +64,8 @@ class PttRecorder {
         } finally {
             recorder.stop()
             recorder.release()
+            gainControl?.release()
         }
-        return pcm.toShortArray()
+        return pcm.toShortArray().also { limiter?.process(it) }
     }
 }

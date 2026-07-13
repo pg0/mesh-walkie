@@ -27,6 +27,7 @@ import com.meshwalkie.core.CompositeTransport
 import com.meshwalkie.core.MeshEngine
 import com.meshwalkie.core.Packet
 import com.meshwalkie.core.PeerRegistry
+import com.meshwalkie.core.Route
 import com.meshwalkie.core.TransportRouter
 import com.meshwalkie.core.WaypointStore
 import com.meshwalkie.location.HeadingSource
@@ -274,13 +275,12 @@ class MeshService : Service() {
         currentGroup = group
         transport = NearbyTransport(this, roomCode = group, deviceName = Settings.displayName.value)
         composite = CompositeTransport(ChannelCrypto(group))   // channel-keyed AES-GCM
-        composite.add(transport)            // BLE mesh; internet server links added on demand
+        composite.add(transport, Route.MESH)   // BLE mesh; internet server links added on demand
         engine = MeshEngine(composite)
         voiceSender = VoiceSender(engine, originId, nextSeq = { seq.incrementAndGet() })
 
-        engine.start { packet ->
+        engine.start(onDeliver = { packet ->
             val now = System.currentTimeMillis()
-            router.noteMeshSeen(packet.originId, now)   // heard on mesh -> mesh route
             registry.onPacket(packet, receivedAtMs = now)
             if (packet is Packet.Voice) voicePlayer.onVoicePacket(packet)
             if (packet is Packet.Text) {
@@ -304,7 +304,12 @@ class MeshService : Service() {
                 }
             }
             publishPeers()
-        }
+        }, onSeen = { packet, route ->
+            // Fires for every packet pre-dedup, so a dual-homed peer is recorded
+            // on each link it is actually reachable by (not just the one that
+            // won the dedup race). Drives the per-peer BLE/internet badge.
+            router.noteSeen(packet.originId, route, System.currentTimeMillis())
+        })
 
         transport.onLinksChanged = { n ->
             val was = currentLinks
@@ -327,8 +332,8 @@ class MeshService : Service() {
         bindTransport(group)
         // bindTransport() builds a fresh composite (new channel key) - re-attach
         // any surviving internet links so they aren't orphaned on channel switch.
-        hostServer?.let { composite.add(it) }
-        serverLink?.let { composite.add(it) }
+        hostServer?.let { composite.add(it, Route.SERVER) }
+        serverLink?.let { composite.add(it, Route.SERVER) }
     }
 
     private fun sendText(text: String) {
@@ -449,7 +454,7 @@ class MeshService : Service() {
             MeshBus.publishLiveBroadcasting(true)
             voicePlayer.setTransmitting(true)   // half-duplex: don't play incoming while live
             liveJob = scope.launch(Dispatchers.IO) {
-                liveRecorder.run(audioSource = micSource(), voiceOnly = Settings.liveVoiceOnly.value) { chunk ->
+                liveRecorder.run(audioSource = micSource(), voiceOnly = Settings.liveVoiceOnly.value, agc = Settings.agc.value) { chunk ->
                     if (currentLinks > 0 || serverConnected) {
                         voiceSender.sendClip(chunk, System.currentTimeMillis(),
                             Settings.voiceBitrate.value, live = true)
@@ -473,7 +478,7 @@ class MeshService : Service() {
                 MeshBus.publishRecording(true)
                 voicePlayer.setTransmitting(true)   // half-duplex: defer playback while mic is open
                 val pcm = try {
-                    recorder.record(isHeld = { pttHeld.get() }, audioSource = micSource())
+                    recorder.record(isHeld = { pttHeld.get() }, audioSource = micSource(), agc = Settings.agc.value)
                 } finally {
                     MeshBus.publishRecording(false)   // false on max-cut too (finger may still be down)
                     voicePlayer.setTransmitting(false)   // flush whatever arrived while we talked
@@ -515,10 +520,12 @@ class MeshService : Service() {
     private fun publishPeers() {
         val now = System.currentTimeMillis()
         // Roster (who is connected) shows regardless of GPS on either side.
-        MeshBus.publishRoster(registry.roster(now))
+        // Decorate each entry with the link it is currently reachable over -
+        // the registry has no transport knowledge, the router does.
+        MeshBus.publishRoster(registry.roster(now).map { it.copy(via = router.routeFor(it.id, now)) })
         // Distance/bearing arrows need our own fix.
         if (!hasFix) return
-        MeshBus.publishPeers(registry.snapshot(myLat, myLon, now))
+        MeshBus.publishPeers(registry.snapshot(myLat, myLon, now).map { it.copy(via = router.routeFor(it.id, now)) })
         MeshBus.publishWaypoints(waypointStore.snapshot(myLat, myLon))
     }
 
@@ -555,7 +562,7 @@ class MeshService : Service() {
         }
         val hs = HostServer(NetUtil.DEFAULT_PORT)
         hs.start()
-        composite.add(hs)
+        composite.add(hs, Route.SERVER)
         hostServer = hs
         MeshBus.publishMyHostIp(ip)
         MeshBus.publishStatus("Hosting at [$ip]:${NetUtil.DEFAULT_PORT}")
@@ -593,7 +600,7 @@ class MeshService : Service() {
             MeshBus.publishStatus(if (c) "Joined internet host $ip" else statusText(currentLinks))
         }
         link.connect()
-        composite.add(link)
+        composite.add(link, Route.SERVER)
         serverLink = link
     }
 
@@ -616,7 +623,7 @@ class MeshService : Service() {
             MeshBus.publishStatus(statusText(currentLinks))
         }
         link.connect()
-        composite.add(link)
+        composite.add(link, Route.SERVER)
         serverLink = link
         MeshBus.publishServerState("Connecting…")
     }

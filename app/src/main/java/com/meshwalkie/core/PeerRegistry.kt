@@ -15,7 +15,10 @@ data class PeerView(
     val lon: Double = 0.0,
     val ageMs: Long = 0L,
     val speedMps: Float = 0f,
-    val courseDeg: Float = -1f
+    val courseDeg: Float = -1f,
+    /** Link this peer is currently reachable over (BLE mesh vs internet).
+     * Decorated by MeshService from the TransportRouter; defaults to MESH. */
+    val via: Route = Route.MESH
 )
 
 /**
@@ -30,7 +33,11 @@ data class PeerRosterEntry(
     /** 0 = direct neighbour, N = reached via N relays. Coarse GPS-free proximity. */
     val hops: Int,
     val batteryPct: Int = -1,
-    val ageMs: Long = 0L
+    val ageMs: Long = 0L,
+    /** Which link this peer is currently reachable over (BLE mesh vs internet).
+     * Decorated by MeshService from the TransportRouter; the registry itself
+     * has no transport knowledge, so it defaults to MESH. */
+    val via: Route = Route.MESH
 )
 
 /**

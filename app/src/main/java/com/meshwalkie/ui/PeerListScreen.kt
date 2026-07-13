@@ -41,6 +41,7 @@ import com.meshwalkie.core.Freshness
 import com.meshwalkie.core.GeoMath
 import com.meshwalkie.core.PeerRosterEntry
 import com.meshwalkie.core.PeerView
+import com.meshwalkie.core.Route
 import com.meshwalkie.core.WaypointView
 import com.meshwalkie.service.MeshBus
 import com.meshwalkie.service.Settings
@@ -336,7 +337,8 @@ fun PeerRow(peer: PeerView, myHeadingDeg: Float, isHost: Boolean = false) {
             val nameLine = if (peer.freshness == Freshness.STALE) "${peer.name} - offline, seen ${Display.formatAge(peer.ageMs)} ago" else peer.name
             val batt = if (peer.batteryPct in 0..100) "  🔋${peer.batteryPct}%" else ""
             val host = if (isHost) "  🌐" else ""
-            Text(nameLine + batt + host, style = MaterialTheme.typography.bodyMedium)
+            val via = if (peer.via == Route.SERVER) "  🌐" else "  📶"   // internet vs BLE mesh
+            Text(nameLine + via + batt + host, style = MaterialTheme.typography.bodyMedium)
             if (peer.speedMps > 0.5f) {
                 val kmh = (peer.speedMps * 3.6f).toInt()
                 val dir = if (peer.courseDeg >= 0f) " ${Display.compassLabel(peer.courseDeg.toDouble())}" else ""
@@ -413,7 +415,13 @@ fun RosterRow(entry: PeerRosterEntry, isHost: Boolean = false) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(entry.name + if (isHost) "  🌐" else "", style = MaterialTheme.typography.titleMedium)
-            val proximity = if (entry.hops == 0) "direct (near)" else "${entry.hops} hops (~${entry.hops * 75} m)"
+            // Hop-count proximity only means something over the BLE mesh: the
+            // internet relay forwards without touching TTL, so a server peer
+            // always looks like "0 hops". Label it by link instead.
+            val proximity = when (entry.via) {
+                Route.SERVER -> "🌐 via internet"
+                Route.MESH -> "📶 " + if (entry.hops == 0) "BLE direct (near)" else "BLE ${entry.hops} hops (~${entry.hops * 75} m)"
+            }
             val offline = if (entry.freshness == Freshness.STALE) "offline ${Display.formatAge(entry.ageMs)} ago - " else ""
             val batt = if (entry.batteryPct in 0..100) " - 🔋${entry.batteryPct}%" else ""
             Text(

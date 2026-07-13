@@ -35,6 +35,7 @@ object Settings {
     private const val KEY_VOICE_BITRATE = "voice_bitrate"
     const val DEFAULT_VOICE_BITRATE = 23_850
     private const val KEY_EARPIECE_PROX = "earpiece_proximity"
+    private const val KEY_AGC = "agc"
 
     private lateinit var appContext: Context
 
@@ -109,6 +110,14 @@ object Settings {
     private val _earpieceProximity = MutableStateFlow(true)
     val earpieceProximity: StateFlow<Boolean> = _earpieceProximity
 
+    /**
+     * Auto level the mic: device AGC (AutomaticGainControl) on capture plus a
+     * software peak limiter, so a near/far/quiet/loud speaker is transmitted at
+     * a consistent level without clipping. On by default.
+     */
+    private val _agc = MutableStateFlow(true)
+    val agc: StateFlow<Boolean> = _agc
+
     /** Stable device id (read-only), shown in settings. */
     var deviceId: String = ""
         private set
@@ -148,6 +157,7 @@ object Settings {
         _textSound.value = prefs.getBoolean(KEY_TEXT_SOUND, true)
         _voiceBitrate.value = prefs.getInt(KEY_VOICE_BITRATE, DEFAULT_VOICE_BITRATE)
         _earpieceProximity.value = prefs.getBoolean(KEY_EARPIECE_PROX, true)
+        _agc.value = prefs.getBoolean(KEY_AGC, true)
     }
 
     fun setVoiceBitrate(rate: Int) {
@@ -160,6 +170,12 @@ object Settings {
         _earpieceProximity.value = on
         appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_EARPIECE_PROX, on).apply()
+    }
+
+    fun setAgc(on: Boolean) {
+        _agc.value = on
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_AGC, on).apply()
     }
 
     fun setTextSound(on: Boolean) {

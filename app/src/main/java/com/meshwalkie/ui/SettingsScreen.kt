@@ -49,6 +49,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     val textSound by Settings.textSound.collectAsStateWithLifecycle()
     val voiceBitrate by Settings.voiceBitrate.collectAsStateWithLifecycle()
     val earpieceProx by Settings.earpieceProximity.collectAsStateWithLifecycle()
+    val agcOn by Settings.agc.collectAsStateWithLifecycle()
     val myHostIp by MeshBus.myHostIp.collectAsStateWithLifecycle()
     val savedName by Settings.displayName.collectAsStateWithLifecycle()
     val savedGroup by Settings.groupCode.collectAsStateWithLifecycle()
@@ -269,6 +270,23 @@ fun SettingsScreen(onBack: () -> Unit) {
             Text("Hold to ear -> earpiece (loud places)", style = MaterialTheme.typography.labelLarge)
             AppSwitch(checked = earpieceProx, onCheckedChange = { Settings.setEarpieceProximity(it) })
         }
+
+        Spacer(Modifier.height(8.dp))
+        AppDivider()
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Auto level mic (AGC + limiter)", style = MaterialTheme.typography.labelLarge)
+            AppSwitch(checked = agcOn, onCheckedChange = { Settings.setAgc(it) })
+        }
+        Text(
+            "Evens out quiet/loud speakers and near/far from the mic, without clipping. Applied at your mic, so everyone hears you at a steady level.",
+            style = MaterialTheme.typography.bodySmall
+        )
 
         Spacer(Modifier.height(20.dp))
 

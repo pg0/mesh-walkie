@@ -30,8 +30,8 @@ android {
         applicationId = "com.meshwalkie"
         minSdk = 29        // MediaCodec software Opus encoder requires API 29
         targetSdk = 34
-        versionCode = 8
-        versionName = "0.7.0"
+        versionCode = 9
+        versionName = "0.7.1"
     }
 
     buildTypes {

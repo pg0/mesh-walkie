@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import com.meshwalkie.core.PeakLimiter
 import kotlin.math.abs
 
 /**
@@ -19,11 +20,17 @@ class LiveRecorder {
 
     @Volatile private var running = false
 
-    /** Caller (MeshService) holds RECORD_AUDIO before calling. */
+    /**
+     * Caller (MeshService) holds RECORD_AUDIO before calling. With [agc] the
+     * device auto-gain is attached to the capture session and a peak limiter
+     * runs on each chunk (one shared envelope across chunks) so the live stream
+     * stays level and un-clipped.
+     */
     @SuppressLint("MissingPermission")
     fun run(
         audioSource: Int = MediaRecorder.AudioSource.MIC,
         voiceOnly: Boolean = false,
+        agc: Boolean = false,
         onChunk: (ShortArray) -> Unit
     ) {
         running = true
@@ -39,6 +46,8 @@ class LiveRecorder {
             AudioFormat.ENCODING_PCM_16BIT,
             maxOf(minBuf, CHUNK_SAMPLES * 2 * 2)
         )
+        val gainControl = CaptureAgc.attach(recorder, agc)
+        val limiter = if (agc) PeakLimiter() else null
         val frame = ShortArray(OpusCodec.FRAME_SAMPLES)
         var hangover = 0
         try {
@@ -49,7 +58,7 @@ class LiveRecorder {
                 if (read <= 0) continue
                 for (i in 0 until read) chunk += frame[i]
                 if (chunk.size >= CHUNK_SAMPLES) {
-                    val arr = chunk.toShortArray()
+                    val arr = chunk.toShortArray().also { limiter?.process(it) }
                     val speech = isSpeech(arr)
                     if (speech) hangover = HANGOVER_CHUNKS
                     if (!voiceOnly || speech || hangover > 0) {
@@ -62,6 +71,7 @@ class LiveRecorder {
         } finally {
             recorder.stop()
             recorder.release()
+            gainControl?.release()
         }
     }
 
