@@ -30,6 +30,38 @@
 | **Pin** | Drop a `meet here` marker on the map |
 | **Reach** | Out of mesh range? An optional online relay bridges the group over the internet |
 
+## See it
+
+<div align="center">
+
+<table>
+<tr>
+<td align="center"><img src="docs/screenshots/main.jpg" width="200"><br><sub><b>List</b> - who's on, how you reach them, battery</sub></td>
+<td align="center"><img src="docs/screenshots/radar.jpg" width="200"><br><sub><b>Radar</b> - range rings around you</sub></td>
+<td align="center"><img src="docs/screenshots/map.jpg" width="200"><br><sub><b>Map</b> - the whole group, offline tiles</sub></td>
+<td align="center"><img src="docs/screenshots/settings.jpg" width="200"><br><sub><b>Settings</b> - channel, theme, quick texts</sub></td>
+</tr>
+</table>
+
+<sub>Each peer shows whether you reach them 📶 over the Bluetooth mesh (with hop count) or 🌐 over the internet relay.</sub>
+
+<br><br>
+
+**Themes**
+
+<table>
+<tr>
+<td align="center"><img src="docs/screenshots/theme_corruption.jpg" width="180"><br><sub>Corruption</sub></td>
+<td align="center"><img src="docs/screenshots/theme_radio.jpg" width="180"><br><sub>Radio</sub></td>
+<td align="center"><img src="docs/screenshots/theme_dark.jpg" width="180"><br><sub>Dark</sub></td>
+<td align="center"><img src="docs/screenshots/theme_night.jpg" width="180"><br><sub>Night (red, dark-adapted)</sub></td>
+</tr>
+</table>
+
+<sub>Default is <b>Field</b> (paper), shown above.</sub>
+
+</div>
+
 ## How it works
 
 **1.** Pick a shared channel name (your group's secret word)
