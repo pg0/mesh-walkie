@@ -18,21 +18,10 @@
 > phone to phone, so the more people in the group, the further it reaches.
 > Mountains, festivals, deep forest - anywhere with no signal.
 
-## What it does
-
-|  |  |
-|---|---|
-| **Talk** | Hold the button, your whole group hears you |
-| **Live** | Stream your voice non-stop (works as a baby monitor) |
-| **Find** | An arrow and distance to each friend, like `600 m N` |
-| **See** | Map and radar of the whole group |
-| **Type** | One-tap quick texts like `OK` or `On my way` |
-| **Pin** | Drop a `meet here` marker on the map |
-| **Reach** | Out of mesh range? An optional online relay bridges the group over the internet |
+<br>
+<div align="center">
 
 ## See it
-
-<div align="center">
 
 <table>
 <tr>
@@ -45,7 +34,19 @@
 
 <sub>Each peer shows whether you reach them 📶 over the Bluetooth mesh (with hop count) or 🌐 over the internet relay.</sub>
 
-<br><br>
+<br>
+
+## What it does
+
+|  |  |
+|---|---|
+| **Talk** | Hold the button, your whole group hears you |
+| **Live** | Stream your voice non-stop (works as a baby monitor) |
+| **Find** | An arrow and distance to each friend, like `600 m N` |
+| **See** | Map and radar of the whole group |
+| **Type** | One-tap quick texts like `OK` or `On my way` |
+| **Pin** | Drop a `meet here` marker on the map |
+| **Reach** | Out of mesh range? An optional online relay bridges the group over the internet |
 
 **Themes**
 
