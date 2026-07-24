@@ -12,3 +12,5 @@ local.properties
 .idea/
 .claude/settings.local.json
 __pycache__/
+docs/superpowers/
+.claude/
